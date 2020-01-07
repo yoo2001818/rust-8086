@@ -1,3 +1,5 @@
+use std::iter::Iterator;
+
 pub enum OpRegisterWord {
   AX,
   CX,
@@ -223,3 +225,125 @@ pub enum Op {
   SEGMENT(OpSegmentRegister),
 }
 
+pub fn parseOp(iter: Iterator<u16>): Option<Op> {
+  const first_word = match iter.next() {
+    Some(val) => val,
+    None => return None,
+  };
+  const first_low = (first_word & 0xff) as u8;
+  match first_low & 0xf8 {
+    0x00 => {
+      // ADD, PUSH ES, POP ES
+    }
+    0x08 => {
+      // OR, PUSH CS
+    },
+    0x10 => {
+      // ADC, PUSH SS, POP SS
+    },
+    0x18 => {
+      // SBB, PUSH DS, POP DS
+    },
+    0x20 => {
+      // AND, SELECT ES, DAA
+    },
+    0x28 => {
+      // SUB, SELECT CS, DAS
+    },
+    0x30 => {
+      // XOR, SELECT SS, AAA
+    },
+    0x38 => {
+      // CMP, SELECT DS, AAS
+    },
+    0x40 => {
+      // INC
+    },
+    0x48 => {
+      // DEC
+    },
+    0x50 => {
+      // PUSH
+    },
+    0x58 => {
+      // POP
+    },
+    0x60 => {
+      // not used
+    },
+    0x68 => {
+      // not used
+    },
+    0x70 => {
+      // JO, JNO, JB, JNB, JE, JNE, JBE, JNBE
+    },
+    0x78 => {
+      // JS, JNS, JP, JNP, JL, JNL, JLE, JNLE
+    },
+    0x80 => {
+      // ADD, OR, ADC, SBB, AND, SUB, XOR, CMP
+      // 80 - Read 2th byte, OP R/M8, IMM8
+      // 81 - Read 2th byte, OP R/M16, IMM16
+      // ADD, -, ADC, SBB, -, SUB, -, CMP
+      // 82 - Read 2th byte, OP R/M8, IMM8
+      // 83 - Read 2th byte, OP R/M16, IMM8
+      // 84 - TEST
+      // 85 - TEST
+      // 86 - XCHG
+      // 87 - XCHG
+    },
+    0x88 => {
+      // 88 - MOV
+      // 89 - MOV
+      // 8A - MOV
+      // 8B - MOV
+      // 8C - MOV
+      // 8D - LEA
+      // 8E - MOV
+      // 8F - POP
+    },
+    0x90 => {
+      // 90 - NOP
+      // 91..97 - XCHG
+    },
+    0x98 => {
+
+    },
+    0xA0 => {
+
+    },
+    0xA8 => {
+
+    },
+    0xB0 => {
+
+    },
+    0xB8 => {
+
+    },
+    0xC0 => {
+
+    },
+    0xC8 => {
+
+    },
+    0xD0 => {
+
+    },
+    0xD8 => {
+
+    },
+    0xE0 => {
+
+    },
+    0xE8 => {
+
+    },
+    0xF0 => {
+
+    },
+    0xF8 => {
+
+    },
+  }
+}
