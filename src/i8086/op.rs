@@ -307,43 +307,103 @@ pub fn parseOp(iter: Iterator<u16>): Option<Op> {
       // 91..97 - XCHG
     },
     0x98 => {
-
+      // 98 - CBW
+      // 99 - CWD
+      // 9A - CALL FAR_PROC
+      // 9B - WAIT
+      // 9C - PUSHF
+      // 9D - POPF
+      // 9E - SAHF
+      // 9F - LAHF
     },
     0xA0 => {
-
+      // A0..A3 - MOV
+      // A4..A5 - MOVS
+      // A6..A7 - CMPS
     },
     0xA8 => {
-
+      // A8..A9 - TEST
+      // AA..AB - STOS
+      // AC..AD - LODS
+      // AE..AF - SCAS
     },
     0xB0 => {
-
+      // MOV
     },
     0xB8 => {
-
+      // MOV
     },
     0xC0 => {
-
+      // C0 - 
+      // C1 - 
+      // C2..C3 - RET
+      // C4 - LES
+      // C5 - LDS
+      // C6 - MOV
+      // C7 - MOV
     },
     0xC8 => {
-
+      // C8 - 
+      // C9 - 
+      // CA - RET
+      // CB - RET
+      // CC - INT
+      // CD - INT
+      // CE - INTO
+      // CF - IRET
     },
     0xD0 => {
-
+      // ROL, ROR, RCL, RCR, SHL, SHR, -, SAR
+      // D0 - op R/M8, 1
+      // D1 - op R/M16, 1
+      // D2 - op R/M8, CL
+      // D3 - op R/M16, CL
+      // D4 - AAM
+      // D5 - AAD
+      // D6 - 
+      // D7 - XLAT
     },
     0xD8 => {
-
+      // ESC
     },
     0xE0 => {
-
+      // E0 - LOOPNE
+      // E1 - LOOPE
+      // E2 - LOOP
+      // E3 - JCXZ
+      // E4..E5 - IN
+      // E6..E7 - OUT
     },
     0xE8 => {
-
+      // E8 - CALL
+      // E9 - JMP
+      // EA - JMP
+      // EB - JMP
+      // EC..ED - IN
+      // EE..EF - OUT
     },
     0xF0 => {
-
+      // F0 - LOCK
+      // F1 -
+      // F2 - REPNE
+      // F3 - REP
+      // F4 - HLT
+      // F5 - CMC
+      // TEST, -, NOT, NEG, MUL, IMUL, DIV, IDIV
+      // F6 - op R/M8
+      // F7 - op R/M16
     },
     0xF8 => {
-
+      // F8 - CLC
+      // F9 - STC
+      // FA - CLI
+      // FB - STI
+      // FC - CLD
+      // FD - STD
+      // INC, DEC, -, -, -, -, -, -
+      // FE - op R/M8
+      // INC, DEC, CALL, CALL, JMP, JMP, PUSH, -
+      // FF - op MEM16
     },
   }
 }
