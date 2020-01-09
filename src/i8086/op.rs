@@ -225,7 +225,35 @@ pub enum Op {
   SEGMENT(OpSegmentRegister),
 }
 
-pub fn parseOp(iter: Iterator<u16>): Option<Op> {
+pub fn parseRegisterWord(byte: u8): OpRegisterWord {
+  match byte {
+    0 => OpRegisterWord::AX,
+    1 => OpRegisterWord::CX,
+    2 => OpRegisterWord::DX,
+    3 => OpRegisterWord::BX,
+    4 => OpRegisterWord::SP,
+    5 => OpRegisterWord::BP,
+    6 => OpRegisterWord::SI,
+    7 => OpRegisterWord::DI,
+  }
+}
+
+pub fn parseModRmWord(byte: u8, iter: &mut Iterator<u16>): OpModRmWord {
+  let mod_val = (byte >> 5) & 0x07;
+  let rm_val = byte & 0x03;
+  match rm_val {
+    0 => REGISTER(parseRegisterWord(mod_val)),
+    1 => ADDRESS(),
+    2 => ADDRESS_DISP_BYTE(),
+    3 => ADDRESS_DISP_WORD(),
+  }
+}
+
+pub fn parseModRmByte(byte: u8): OpModRmByte {
+
+}
+
+pub fn parseOp(iter: &mut Iterator<u16>): Option<Op> {
   const first_word = match iter.next() {
     Some(val) => val,
     None => return None,
