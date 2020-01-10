@@ -36,7 +36,6 @@ pub enum OpAddressType {
   BP_DI,
   SI,
   DI,
-  DIRECT,
   BP,
   BX,
 }
@@ -46,6 +45,7 @@ pub enum OpModRmByte {
   ADDRESS(OpAddressType),
   ADDRESS_DISP_BYTE(OpAddressType, u8),
   ADDRESS_DISP_WORD(OpAddressType, u16),
+  DIRECT(u16),
 }
 
 pub enum OpModRmWord {
@@ -235,31 +235,92 @@ pub fn parseRegisterWord(byte: u8): OpRegisterWord {
     5 => OpRegisterWord::BP,
     6 => OpRegisterWord::SI,
     7 => OpRegisterWord::DI,
+    _ => OpRegisterWord::AX,
   }
 }
 
-pub fn parseModRmWord(byte: u8, iter: &mut Iterator<u16>): OpModRmWord {
+pub fn parseRegisterByte(byte: u8): OpRegisterByte {
+  match byte {
+    0 => OpRegisterByte::AL,
+    1 => OpRegisterByte::CL,
+    2 => OpRegisterByte::DL,
+    3 => OpRegisterByte::BL,
+    4 => OpRegisterByte::AH,
+    5 => OpRegisterByte::CH,
+    6 => OpRegisterByte::DH,
+    7 => OpRegisterByte::BH,
+    _ => OpRegisterByte::AL,
+  }
+}
+
+pub fn parseAddressType(byte: u8): OpAddressType {
+  match byte {
+    0 => OpAddressType::BX_SI,
+    1 => OpAddressType::BX_DI,
+    2 => OpAddressType::BP_SI,
+    3 => OpAddressType::BP_DI,
+    4 => OpAddressType::SI,
+    5 => OpAddressType::DI,
+    6 => OpAddressType::BP,
+    7 => OpAddressType::BX,
+    _ => OpAddressType::BX_SI,
+  }
+}
+
+pub fn parseModRmWord(byte: u8, iter: &mut Iterator<u8>): OpModRmWord {
   let mod_val = (byte >> 5) & 0x07;
   let rm_val = byte & 0x03;
   match rm_val {
-    0 => REGISTER(parseRegisterWord(mod_val)),
-    1 => ADDRESS(),
-    2 => ADDRESS_DISP_BYTE(),
-    3 => ADDRESS_DISP_WORD(),
+    0 => OpModRmWord::REGISTER(parseRegisterWord(mod_val)),
+    1 => {
+      let addr_type = parseAddressType(mod_val);
+      if addr_type == OpAddressType::BP {
+        OpModRmWord::DIRECT(
+          iter.next().unwrap() as u16 +
+          ((iter.next().unwrap() as u16) << 8),
+        )
+      } else {
+        OpModRmWord::ADDRESS(addr_type)
+      }
+    }
+    2 => OpModRmWord::ADDRESS_DISP_BYTE(parseAddressType(mod_val),
+      iter.next().unwrap()),
+    3 => OpModRmWord::ADDRESS_DISP_WORD(parseAddressType(mod_val),
+      iter.next().unwrap() as u16 +
+      ((iter.next().unwrap() as u16) << 8)),
   }
 }
 
 pub fn parseModRmByte(byte: u8): OpModRmByte {
-
+  let mod_val = (byte >> 5) & 0x07;
+  let rm_val = byte & 0x03;
+  match rm_val {
+    0 => OpModRmByte::REGISTER(parseRegisterByte(mod_val)),
+    1 => {
+      let addr_type = parseAddressType(mod_val);
+      if addr_type == OpAddressType::BP {
+        OpModRmByte::DIRECT(
+          iter.next().unwrap() as u16 +
+          ((iter.next().unwrap() as u16) << 8),
+        )
+      } else {
+        OpModRmByte::ADDRESS(addr_type)
+      }
+    }
+    2 => OpModRmByte::ADDRESS_DISP_BYTE(parseAddressType(mod_val),
+      iter.next().unwrap()),
+    3 => OpModRmByte::ADDRESS_DISP_WORD(parseAddressType(mod_val),
+      iter.next().unwrap() as u16 +
+      ((iter.next().unwrap() as u16) << 8)),
+  }
 }
 
-pub fn parseOp(iter: &mut Iterator<u16>): Option<Op> {
-  const first_word = match iter.next() {
+pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
+  const first = match iter.next() {
     Some(val) => val,
     None => return None,
   };
-  const first_low = (first_word & 0xff) as u8;
-  match first_low & 0xf8 {
+  match first & 0xf8 {
     0x00 => {
       // ADD, PUSH ES, POP ES
     }
