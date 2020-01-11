@@ -291,7 +291,7 @@ pub fn parseModRmWord(byte: u8, iter: &mut Iterator<u8>): OpModRmWord {
   }
 }
 
-pub fn parseModRmByte(byte: u8): OpModRmByte {
+pub fn parseModRmByte(byte: u8, iter: &mut Iterator<u8>): OpModRmByte {
   let mod_val = (byte >> 5) & 0x07;
   let rm_val = byte & 0x03;
   match rm_val {
@@ -323,6 +323,21 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
   match first & 0xf8 {
     0x00 => {
       // ADD, PUSH ES, POP ES
+      const second = match iter.next() {
+        Some(val) => val,
+        None => return None,
+      };
+      match first & 0x07 {
+        0 => Some(Op::ADD(OpBinarySrcDest::BYTE(
+          OpBinarySrcDestByte::REG_RM(
+            OpModRegRmByte {
+              direction: OpDirectionType::REG_TO_RM,
+              register: parseRegisterByte((second >> 3) & 0x7),
+              rm: parseModRmByte(second)
+            }
+          ),
+        ))),
+      }
     }
     0x08 => {
       // OR, PUSH CS
