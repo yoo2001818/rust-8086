@@ -53,6 +53,7 @@ pub enum OpModRmWord {
   ADDRESS(OpAddressType),
   ADDRESS_DISP_BYTE(OpAddressType, u8),
   ADDRESS_DISP_WORD(OpAddressType, u16),
+  DIRECT(u16),
 }
 
 pub enum OpModRm {
@@ -267,6 +268,11 @@ pub fn parseAddressType(byte: u8): OpAddressType {
   }
 }
 
+fn iterNextU16 (iter: &mut Iterator<u8>): u16 {
+  iter.next().unwrap() as u16 +
+    ((iter.next().unwrap() as u16) << 8)
+}
+
 pub fn parseModRmWord(byte: u8, iter: &mut Iterator<u8>): OpModRmWord {
   let mod_val = (byte >> 5) & 0x07;
   let rm_val = byte & 0x03;
@@ -275,10 +281,7 @@ pub fn parseModRmWord(byte: u8, iter: &mut Iterator<u8>): OpModRmWord {
     1 => {
       let addr_type = parseAddressType(mod_val);
       if addr_type == OpAddressType::BP {
-        OpModRmWord::DIRECT(
-          iter.next().unwrap() as u16 +
-          ((iter.next().unwrap() as u16) << 8),
-        )
+        OpModRmWord::DIRECT(iterNextU16(iter))
       } else {
         OpModRmWord::ADDRESS(addr_type)
       }
@@ -286,8 +289,7 @@ pub fn parseModRmWord(byte: u8, iter: &mut Iterator<u8>): OpModRmWord {
     2 => OpModRmWord::ADDRESS_DISP_BYTE(parseAddressType(mod_val),
       iter.next().unwrap()),
     3 => OpModRmWord::ADDRESS_DISP_WORD(parseAddressType(mod_val),
-      iter.next().unwrap() as u16 +
-      ((iter.next().unwrap() as u16) << 8)),
+      iterNextU16(iter))
   }
 }
 
@@ -315,6 +317,43 @@ pub fn parseModRmByte(byte: u8, iter: &mut Iterator<u8>): OpModRmByte {
   }
 }
 
+pub fn parseBinarySrcDest(
+  first: u8, iter: &mut Iterator<u8>,
+): OpBinarySrcDest {
+  match first & 0x07 {
+    0..=3 => {
+      let second = iter.next().unwrap();
+      let direction = match first & 0x02 {
+        0 => OpDirectionType::REG_TO_RM,
+        2 => OpDirectionType::RM_TO_REG,
+        _ => panic!("This should never happen"),
+      }
+      match first & 0x01 {
+        0 => OpBinarySrcDest::BYTE(OpBinarySrcDestByte::REG_RM(
+          OpModRegRmByte {
+            direction: direction,
+            register: parseRegisterByte((second >> 3) & 0x7),
+            rm: parseModRmByte(second, iter),
+          }
+        )),
+        1 => OpBinarySrcDest::WORD(OpBinarySrcDestWord::REG_RM(
+          OpModRegRmWord {
+            direction: direction,
+            register: parseRegisterByte((second >> 3) & 0x7),
+            rm: parseModRmByte(second, iter),
+          }
+        )),
+        _ => panic!("This should never happen"),
+      }
+    },
+    4 => OpBinarySrcDest::BYTE(
+      OpBinarySrcDestByte::IMM_AL(iter.next().unwrap())),
+    5 => OpBinarySrcDest::WORD(
+      OpBinarySrcDestWord::IMM_AX(iterNextU16(iter))),
+    _ => panic!("..."),
+  }
+}
+
 pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
   const first = match iter.next() {
     Some(val) => val,
@@ -323,42 +362,75 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
   match first & 0xf8 {
     0x00 => {
       // ADD, PUSH ES, POP ES
-      const second = match iter.next() {
-        Some(val) => val,
-        None => return None,
-      };
       match first & 0x07 {
-        0 => Some(Op::ADD(OpBinarySrcDest::BYTE(
-          OpBinarySrcDestByte::REG_RM(
-            OpModRegRmByte {
-              direction: OpDirectionType::REG_TO_RM,
-              register: parseRegisterByte((second >> 3) & 0x7),
-              rm: parseModRmByte(second)
-            }
-          ),
-        ))),
+        0..=5 => Op::ADD(parseBinarySrcDest(first, iter)),
+        6 => Op::PUSH_SEG(OpSegmentRegister::ES),
+        7 => Op::POP_SEG(OpSegmentRegister::ES),
+        _ => panic!(""),
       }
     }
     0x08 => {
       // OR, PUSH CS
+      match first & 0x07 {
+        0..=5 => Op::OR(parseBinarySrcDest(first, iter)),
+        6 => Op::PUSH_SEG(OpSegmentRegister::CS),
+        7 => Op::POP_SEG(OpSegmentRegister::CS),
+        _ => panic!(""),
+      }
     },
     0x10 => {
       // ADC, PUSH SS, POP SS
+      match first & 0x07 {
+        0..=5 => Op::ADC(parseBinarySrcDest(first, iter)),
+        6 => Op::PUSH_SEG(OpSegmentRegister::SS),
+        7 => Op::POP_SEG(OpSegmentRegister::SS),
+        _ => panic!(""),
+      }
     },
     0x18 => {
       // SBB, PUSH DS, POP DS
+      match first & 0x07 {
+        0..=5 => Op::SBB(parseBinarySrcDest(first, iter)),
+        6 => Op::PUSH_SEG(OpSegmentRegister::DS),
+        7 => Op::POP_SEG(OpSegmentRegister::DS),
+        _ => panic!(""),
+      }
     },
     0x20 => {
       // AND, SELECT ES, DAA
+      match first & 0x07 {
+        0..=5 => Op::AND(parseBinarySrcDest(first, iter)),
+        6 => Op::SEGMENT(OpSegmentRegister::ES),
+        7 => Op::DAA,
+        _ => panic!(""),
+      }
     },
     0x28 => {
       // SUB, SELECT CS, DAS
+      match first & 0x07 {
+        0..=5 => Op::SUB(parseBinarySrcDest(first, iter)),
+        6 => Op::SEGMENT(OpSegmentRegister::CS),
+        7 => Op::DAS,
+        _ => panic!(""),
+      }
     },
     0x30 => {
       // XOR, SELECT SS, AAA
+      match first & 0x07 {
+        0..=5 => Op::XOR(parseBinarySrcDest(first, iter)),
+        6 => Op::SEGMENT(OpSegmentRegister::SS),
+        7 => Op::AAA,
+        _ => panic!(""),
+      }
     },
     0x38 => {
       // CMP, SELECT DS, AAS
+      match first & 0x07 {
+        0..=5 => Op::CMP(parseBinarySrcDest(first, iter)),
+        6 => Op::SEGMENT(OpSegmentRegister::DS),
+        7 => Op::AAS,
+        _ => panic!(""),
+      }
     },
     0x40 => {
       // INC
