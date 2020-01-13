@@ -434,15 +434,19 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
     },
     0x40 => {
       // INC
+      Op::INC_REG(parseRegisterWord(first & 0x07))
     },
     0x48 => {
       // DEC
+      Op::DEC_REG(parseRegisterWord(first & 0x07))
     },
     0x50 => {
       // PUSH
+      Op::PUSH_REG(parseRegisterWord(first & 0x07))
     },
     0x58 => {
       // POP
+      Op::POP_REG(parseRegisterWord(first & 0x07))
     },
     0x60 => {
       // not used
