@@ -40,25 +40,20 @@ pub enum OpAddressType {
   BX,
 }
 
-pub enum OpModRmByte {
-  REGISTER(OpRegisterByte),
+pub enum OpModRm<T> {
+  REGISTER(T),
   ADDRESS(OpAddressType),
   ADDRESS_DISP_BYTE(OpAddressType, u8),
   ADDRESS_DISP_WORD(OpAddressType, u16),
   DIRECT(u16),
 }
 
-pub enum OpModRmWord {
-  REGISTER(OpRegisterWord),
-  ADDRESS(OpAddressType),
-  ADDRESS_DISP_BYTE(OpAddressType, u8),
-  ADDRESS_DISP_WORD(OpAddressType, u16),
-  DIRECT(u16),
-}
+pub type OpModRmWord = OpModRm<OpRegisterWord>;
+pub type OpModRmByte = OpModRm<OpRegisterByte>;
 
-pub enum OpModRm {
-  BYTE(OpModRmByte),
+pub enum OpModRmDual {
   WORD(OpModRmWord),
+  BYTE(OpModRmByte),
 }
 
 pub enum OpDirectionType {
@@ -66,40 +61,33 @@ pub enum OpDirectionType {
   RM_TO_REG,
 }
 
-pub struct OpModRegRmByte {
+pub struct OpModRegRm<T> {
   direction: OpDirectionType,
-  register: OpRegisterByte,
-  rm: OpModRmByte,
+  register: T,
+  rm: OpModRm<T>,
 }
 
-pub struct OpModRegRmWord {
-  direction: OpDirectionType,
-  register: OpRegisterWord,
-  rm: OpModRmWord,
-}
+pub type OpModRegRmWord = OpModRegRm<OpRegisterWord>;
+pub type OpModRegRmByte = OpModRegRm<OpRegisterByte>;
 
-pub enum OpModRegRm {
-  BYTE(OpModRegRmByte),
+pub enum OpModRegRmDual {
   WORD(OpModRegRmWord),
+  BYTE(OpModRegRmByte),
 }
 
-pub enum OpBinarySrcDestWord {
-  REG_RM(OpModRegRmWord),
-  IMM_RM(OpModRmWord, i16),
-  IMM_REG(OpRegisterWord, i16),
-  IMM_AX(i16),
+pub enum OpBinarySrcDest<T, V> {
+  REG_RM(OpModRegRm<T>),
+  IMM_RM(OpModRm<T>, V),
+  IMM_REG(T, V),
+  IMM_AX(V),
 }
 
-pub enum OpBinarySrcDestByte {
-  REG_RM(OpModRegRmByte),
-  IMM_RM(OpModRmByte, i8),
-  IMM_REG(OpRegisterByte, i8),
-  IMM_AL(i8),
-}
+pub type OpBinarySrcDestWord = OpBinarySrcDest<OpRegisterWord, u16>;
+pub type OpBinarySrcDestByte = OpBinarySrcDest<OpRegisterByte, u8>;
 
-pub enum OpBinarySrcDest {
-  BYTE(OpBinarySrcDestByte),
+pub enum OpBinarySrcDestDual {
   WORD(OpBinarySrcDestWord),
+  BYTE(OpBinarySrcDestByte),
 }
 
 pub enum OpRotateType {
@@ -113,7 +101,7 @@ pub enum OpWordByte {
 }
 
 pub enum Op {
-  MOV(OpBinaryDest),
+  MOV(OpBinarySrcDestDual),
   MOV_WORD_SEG(OpDirectionType, OpModRmWord, OpSegmentRegister),
   PUSH_RM(OpModRmWord),
   PUSH_REG(OpRegisterWord),
@@ -135,40 +123,40 @@ pub enum Op {
   SAHF,
   PUSHF,
   POPF,
-  ADD(OpBinarySrcDest),
-  ADC(OpBinarySrcDest),
-  INC_RM(OpModRm),
+  ADD(OpBinarySrcDestDual),
+  ADC(OpBinarySrcDestDual),
+  INC_RM(OpModRmDual),
   INC_REG(OpRegisterWord),
   AAA,
   DAA,
-  SUB(OpBinarySrcDest),
-  SBB(OpBinarySrcDest),
-  DEC_RM(OpModRm),
+  SUB(OpBinarySrcDestDual),
+  SBB(OpBinarySrcDestDual),
+  DEC_RM(OpModRmDual),
   DEC_REG(OpRegisterWord),
-  NEG(OpModRm),
-  CMP(OpBinarySrcDest),
+  NEG(OpModRmDual),
+  CMP(OpBinarySrcDestDual),
   AAS,
   DAS,
-  MUL(OpModRm),
-  IMUL(OpModRm),
+  MUL(OpModRmDual),
+  IMUL(OpModRmDual),
   AAM,
-  DIV(OpModRm),
-  IDIV(OpModRm),
+  DIV(OpModRmDual),
+  IDIV(OpModRmDual),
   AAD,
   CSW,
   CWD,
-  NOT(OpModRm),
-  SHL(OpRotateType, OpModRm),
-  SHR(OpRotateType, OpModRm),
-  SAR(OpRotateType, OpModRm),
-  ROL(OpRotateType, OpModRm),
-  ROR(OpRotateType, OpModRm),
-  RCL(OpRotateType, OpModRm),
-  RCR(OpRotateType, OpModRm),
-  AND(OpBinarySrcDest),
-  TEST(OpBinarySrcDest),
-  OR(OpBinarySrcDest),
-  XOR(OpBinarySrcDest),
+  NOT(OpModRmDual),
+  SHL(OpRotateType, OpModRmDual),
+  SHR(OpRotateType, OpModRmDual),
+  SAR(OpRotateType, OpModRmDual),
+  ROL(OpRotateType, OpModRmDual),
+  ROR(OpRotateType, OpModRmDual),
+  RCL(OpRotateType, OpModRmDual),
+  RCR(OpRotateType, OpModRmDual),
+  AND(OpBinarySrcDestDual),
+  TEST(OpBinarySrcDestDual),
+  OR(OpBinarySrcDestDual),
+  XOR(OpBinarySrcDestDual),
   REP_SET,
   REP_UNSET,
   MOVS(OpWordByte),
@@ -355,10 +343,7 @@ pub fn parseBinarySrcDest(
 }
 
 pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
-  const first = match iter.next() {
-    Some(val) => val,
-    None => return None,
-  };
+  const first = iter.next()?;
   match first & 0xf8 {
     0x00 => {
       // ADD, PUSH ES, POP ES
