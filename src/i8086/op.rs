@@ -437,9 +437,31 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
     },
     0x70 => {
       // JO, JNO, JB, JNB, JE, JNE, JBE, JNBE
+      let second = iter.next()?;
+      match first & 0x07 {
+        0 => Op::JO(second),
+        1 => Op::JNO(second),
+        2 => Op::JB(second),
+        3 => Op::JAE(second),
+        4 => Op::JE(second),
+        5 => Op::JNE(second),
+        6 => Op::JBE(second),
+        7 => Op::JA(second),
+      }
     },
     0x78 => {
       // JS, JNS, JP, JNP, JL, JNL, JLE, JNLE
+      let second = iter.next()?;
+      match first & 0x07 {
+        0 => Op::JS(second),
+        1 => Op::JNS(second),
+        2 => Op::JP(second),
+        3 => Op::JNP(second),
+        4 => Op::JL(second),
+        5 => Op::JGE(second),
+        6 => Op::JLE(second),
+        7 => Op::JG(second),
+      }
     },
     0x80 => {
       // ADD, OR, ADC, SBB, AND, SUB, XOR, CMP
