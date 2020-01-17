@@ -474,6 +474,84 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
       // 85 - TEST
       // 86 - XCHG
       // 87 - XCHG
+      match first & 0x07 {
+        0 => {
+          let second = iter.next()?;
+          let mod_rm = parseModRmByte(second, iter);
+          let src_dest = OpBinarySrcDestDual::BYTE(
+            OpBinarySrcDestByte::IMM_RM(mod_rm, iter.next()?));
+          match (second >> 3) & 0x07 {
+            0 => Op::ADD(src_dest),
+            1 => Op::OR(src_dest),
+            2 => Op::ADC(src_dest),
+            3 => Op::SBB(src_dest),
+            4 => Op::AND(src_dest),
+            5 => Op::SUB(src_dest),
+            6 => Op::XOR(src_dest),
+            7 => Op::CMP(src_dest),
+          }
+        },
+        1 => {
+          let second = iter.next()?;
+          let mod_rm = parseModRmWord(second, iter);
+          let src_dest = OpBinarySrcDestDual::Word(
+            OpBinarySrcDestWord::IMM_RM(mod_rm, iterNextU16(iter)?));
+          match (second >> 3) & 0x07 {
+            0 => Op::ADD(src_dest),
+            1 => Op::OR(src_dest),
+            2 => Op::ADC(src_dest),
+            3 => Op::SBB(src_dest),
+            4 => Op::AND(src_dest),
+            5 => Op::SUB(src_dest),
+            6 => Op::XOR(src_dest),
+            7 => Op::CMP(src_dest),
+          }
+        },
+        2 => {
+          let second = iter.next()?;
+          let mod_rm = parseModRmByte(second, iter);
+          let src_dest = OpBinarySrcDestDual::BYTE(
+            OpBinarySrcDestByte::IMM_RM(mod_rm, iter.next()?));
+          match (second >> 3) & 0x07 {
+            0 => Op::ADD(src_dest),
+            1 => return None(),
+            2 => Op::ADC(src_dest),
+            3 => Op::SBB(src_dest),
+            4 => return None(),
+            5 => Op::SUB(src_dest),
+            6 => return None(),
+            7 => Op::CMP(src_dest),
+          }
+        },
+        3 => {
+          let second = iter.next()?;
+          let mod_rm = parseModRmWord(second, iter);
+          let src_dest = OpBinarySrcDestDual::Word(
+            OpBinarySrcDestWord::IMM_RM(mod_rm, iterNextU16(iter)?));
+          match (second >> 3) & 0x07 {
+            0 => Op::ADD(src_dest),
+            1 => return None(),
+            2 => Op::ADC(src_dest),
+            3 => Op::SBB(src_dest),
+            4 => return None(),
+            5 => Op::SUB(src_dest),
+            6 => return None(),
+            7 => Op::CMP(src_dest),
+          }
+        },
+        4 => {
+
+        },
+        5 => {
+
+        },
+        6 => {
+
+        },
+        7 => {
+
+        },
+      }
     },
     0x88 => {
       // 88 - MOV
