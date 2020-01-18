@@ -256,6 +256,16 @@ pub fn parseAddressType(byte: u8): OpAddressType {
   }
 }
 
+pub fn parseSegmentRegister(byte: u8): Option<OpSegmentRegister> {
+  match byte {
+    0 => Some(OpSegmentRegister::ES),
+    1 => Some(OpSegmentRegister::CS),
+    2 => Some(OpSegmentRegister::DS),
+    3 => Some(OpSegmentRegister::SS),
+    _ => None(),
+  }
+}
+
 fn iterNextU16 (iter: &mut Iterator<u8>): Option<u16> {
   Some(iter.next()? as u16 +
     ((iter.next()? as u16) << 8))
@@ -540,16 +550,48 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
           }
         },
         4 => {
-
+          // TEST
+          let second = iter.next()?;
+          Op::TEST(OpBinarySrcDest::BYTE(OpBinarySrcDestByte::REG_RM(
+            OpModRegRmByte {
+              direction: OpDirectionType::RM_TO_REG,
+              register: parseRegisterByte((second >> 3) & 0x7),
+              rm: parseModRmByte(second, iter)?,
+            }
+          )))
         },
         5 => {
-
+          // TEST
+          let second = iter.next()?;
+          Op::TEST(OpBinarySrcDest::WORD(OpBinarySrcDestWord::REG_RM(
+            OpModRegRmWord {
+              direction: OpDirectionType::RM_TO_REG,
+              register: parseRegisterWord((second >> 3) & 0x7),
+              rm: parseModRmWord(second, iter)?,
+            }
+          )))
         },
         6 => {
-
+          // XCHG
+          let second = iter.next()?;
+          Op::XCHG(OpBinarySrcDest::BYTE(OpBinarySrcDestByte::REG_RM(
+            OpModRegRmByte {
+              direction: OpDirectionType::RM_TO_REG,
+              register: parseRegisterByte((second >> 3) & 0x7),
+              rm: parseModRmByte(second, iter)?,
+            }
+          )))
         },
         7 => {
-
+          // XCHG
+          let second = iter.next()?;
+          Op::XCHG(OpBinarySrcDest::WORD(OpBinarySrcDestWord::REG_RM(
+            OpModRegRmWord {
+              direction: OpDirectionType::RM_TO_REG,
+              register: parseRegisterWord((second >> 3) & 0x7),
+              rm: parseModRmWord(second, iter)?,
+            }
+          )))
         },
       }
     },
@@ -562,6 +604,32 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
       // 8D - LEA
       // 8E - MOV
       // 8F - POP
+      match first & 0x07 {
+        0..=3 => {
+          // MOV
+          Op::MOV(parseBinarySrcDest(first, iter)?)
+        },
+        4 => {
+          // mov r/m16, segreg
+          let second = iter.next()?;
+          let mod_rm = parseModRmWord(second, iter)?;
+          let reg = parseSegmentRegister((second >> 3) & 0x07)?;
+          Op::MOV_WORD_SEG(OpDirectionType::REG_TO_RM, mod_rm, reg);
+        },
+        5 => {
+          // lea reg16, r/m16
+        },
+        6 => {
+          // mov segreg, r/m16
+          let second = iter.next()?;
+          let mod_rm = parseModRmWord(second, iter)?;
+          let reg = parseSegmentRegister((second >> 3) & 0x07)?;
+          Op::MOV_WORD_SEG(OpDirectionType::RM_TO_REG, mod_rm, reg);
+        },
+        7 => {
+          // pop r/m16 (second 000)
+        },
+      }
     },
     0x90 => {
       // 90 - NOP
