@@ -100,6 +100,10 @@ pub enum OpWordByte {
 pub enum Op {
   MOV(OpBinarySrcDestDual),
   MOV_WORD_SEG(OpDirectionType, OpModRmWord, OpSegmentRegister),
+  MOV_AX_TO_MEM(u16),
+  MOV_MEM_TO_AX(u16),
+  MOV_AL_TO_MEM(u16),
+  MOV_MEM_TO_AL(u16),
   PUSH_RM(OpModRmWord),
   PUSH_REG(OpRegisterWord),
   PUSH_SEG(OpSegmentRegister),
@@ -334,12 +338,12 @@ pub fn parseBinarySrcDest(
         0 => OpBinarySrcDest::BYTE(OpBinarySrcDestByte::REG_TO_RM(parseModRegRmByte(second, iter))),
         1 => OpBinarySrcDest::WORD(OpBinarySrcDestWord::REG_TO_RM(parseModRegRmWord(second, iter))),
         2 => OpBinarySrcDest::BYTE(OpBinarySrcDestByte::RM_TO_REG(parseModRegRmByte(second, iter))),
-        1 => OpBinarySrcDest::WORD(OpBinarySrcDestWord::RM_TO_REG(parseModRegRmWord(second, iter))),
+        3 => OpBinarySrcDest::WORD(OpBinarySrcDestWord::RM_TO_REG(parseModRegRmWord(second, iter))),
         _ => panic!("This should never happen"),
       }
     },
     4 => OpBinarySrcDest::BYTE(
-      OpBinarySrcDestByte::IMM_AL(iter.next()?),
+      OpBinarySrcDestByte::IMM_AX(iter.next()?),
     5 => OpBinarySrcDest::WORD(
       OpBinarySrcDestWord::IMM_AX(iterNextU16(iter)?)),
     _ => panic!("..."),
@@ -642,18 +646,44 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
       // A0..A3 - MOV
       // A4..A5 - MOVS
       // A6..A7 - CMPS
+      match first & 0x07 {
+        0 => Op::MOV_MEM_TO_AL(iterNextU16(iter)?),
+        1 => Op::MOV_MEM_TO_AX(iterNextU16(iter)?),
+        2 => Op::MOV_AL_TO_MEM(iterNextU16(iter)?),
+        3 => Op::MOV_AX_TO_MEM(iterNextU16(iter)?),
+        4 => Op::MOVS(OpWordByte::BYTE),
+        5 => Op::MOVS(OpWordByte::WORD),
+        6 => Op::CMPS(OpWordByte::BYTE),
+        7 => Op::CMPS(OpWordByte::WORD),
+      }
     },
     0xA8 => {
       // A8..A9 - TEST
       // AA..AB - STOS
       // AC..AD - LODS
       // AE..AF - SCAS
+      match first & 0x07 {
+        0 => Op::TEST(OpBinarySrcDestDual::BYTE(OpBinarySrcDestByte::IMM_AX(
+          iter.next()?))),
+        1 => Op::TEST(OpBinarySrcDestDual::WORD(OpBinarySrcDestWord::IMM_AX(
+          iterNextU16(iter)?))),
+        2 => Op::STOS(OpWordByte::BYTE),
+        3 => Op::STOS(OpWordByte::WORD),
+        4 => Op::LODS(OpWordByte::BYTE),
+        5 => Op::LODS(OpWordByte::WORD),
+        6 => Op::SCAS(OpWordByte::BYTE),
+        7 => Op::SCAS(OpWordByte::WORD),
+      }
     },
     0xB0 => {
       // MOV
+      Op::MOV(OpBinarySrcDestDual::BYTE(OpBinarySrcDestByte::IMM_REG(
+        parseRegisterByte(first & 0x07))))
     },
     0xB8 => {
       // MOV
+      Op::MOV(OpBinarySrcDestDual::WORD(OpBinarySrcDestWord::IMM_REG(
+        parseRegisterWord(first & 0x07))))
     },
     0xC0 => {
       // C0 - 
