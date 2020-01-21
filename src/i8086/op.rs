@@ -693,6 +693,32 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
       // C5 - LDS
       // C6 - MOV
       // C7 - MOV
+      match first & 0x07 {
+        0 => return None(),
+        1 => return None(),
+        2 => Op::RET_INTRA_IMM(iterNextU16(iter)?),
+        3 => Op::RET_INTRA(),
+        4 => Op::LES(parseModRegRmWord(iter.next()?, iter)?),
+        5 => Op::LDS(parseModRegRmWord(iter.next()?, iter)?),
+        6 => {
+          let second = iter.next()?;
+          let mod_rm = parseModRmByte(second, iter)?;
+          match (second >> 3) & 0x07 {
+            0 => Op::MOV(OpBinarySrcDestDual::BYTE(
+              OpBinarySrcDestByte::IMM_RM(mod_rm, iter.next()?))),
+            _ => return None(),
+          }
+        },
+        7 => {
+          let second = iter.next()?;
+          let mod_rm = parseModRmWord(second, iter)?;
+          match (second >> 3) & 0x07 {
+            0 => Op::MOV(OpBinarySrcDestDual::WORD(
+              OpBinarySrcDestWORD::IMM_RM(mod_rm, iterNextU16(iter)?))),
+            _ => return None(),
+          }
+        },
+      }
     },
     0xC8 => {
       // C8 - 
@@ -703,6 +729,16 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
       // CD - INT
       // CE - INTO
       // CF - IRET
+      match first & 0x07 {
+        0 => return None(),
+        1 => return None(),
+        2 => Op::RET_INTER_IMM(iterNextU16(iter)?),
+        3 => Op::RET_INTER(),
+        4 => Op::INT(3),
+        5 => Op::INT(iter.next()?),
+        6 => Op::INTO(),
+        7 => Op::IRET(),
+      }
     },
     0xD0 => {
       // ROL, ROR, RCL, RCR, SHL, SHR, -, SAR
