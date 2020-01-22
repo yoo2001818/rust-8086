@@ -750,6 +750,47 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
       // D5 - AAD
       // D6 - 
       // D7 - XLAT
+      match first & 0x07 {
+        0..=3 => {
+          let second = iter.next()?;
+          let rotate_type = match (first >> 1) & 0x01 {
+            0 => OpRotateType::ONE(),
+            1 => OpRotateType::CL(),
+          }
+          let rm = match first & 0x01 {
+            0 => OpModRmDual::BYTE(parseModRmByte(second, iter)?),
+            1 => OpModRmDual::WORD(parseModRmWord(second, iter)?),
+          };
+          match (second >> 3) & 0x07 {
+            0 => Op::ROL(rotate_type, rm),
+            1 => Op::ROR(rotate_type, rm),
+            2 => Op::RCL(rotate_type, rm),
+            3 => Op::RCR(rotate_type, rm),
+            4 => Op::SHL(rotate_type, rm),
+            5 => Op::SHR(rotate_type, rm),
+            6 => return None(),
+            7 => Op::SAR(rotate_type, rm),
+          }
+        },
+        4 => {
+          let second = iter.next()?;
+          if second == 0x0A {
+            Op::AAM()
+          } else {
+            return None();
+          }
+        }
+        5 => {
+          let second = iter.next()?;
+          if second == 0x0A {
+            Op::AAD()
+          } else {
+            return None();
+          }
+        }
+        6 => return None(),
+        7 => Op::XLAT(),
+      }
     },
     0xD8 => {
       // ESC
