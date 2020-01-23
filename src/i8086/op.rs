@@ -156,6 +156,8 @@ pub enum Op {
   RCR(OpRotateType, OpModRmDual),
   AND(OpBinarySrcDestDual),
   TEST(OpModRegRmDual),
+  TEST_IMM_BYTE(OpModRmByte, u8),
+  TEST_IMM_WORD(OpModRmWord, u16),
   OR(OpBinarySrcDestDual),
   XOR(OpBinarySrcDestDual),
   REP_SET,
@@ -210,7 +212,7 @@ pub enum Op {
   STI,
   HLT,
   WAIT,
-  ESC(u8, u8, OpModRmWord),
+  ESC(u8, OpModRmWord),
   LOCK,
   SEGMENT(OpSegmentRegister),
 }
@@ -794,6 +796,10 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
     },
     0xD8 => {
       // ESC
+      let second = iter.next()?;
+      let rm = parseModRmWord(second, iter)?;
+      let esc_id = ((first & 0x7) << 3) + ((second >> 3) & 0x7);
+      Op::ESC(esc_id, rm)
     },
     0xE0 => {
       // E0 - LOOPNE
@@ -802,6 +808,16 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
       // E3 - JCXZ
       // E4..E5 - IN
       // E6..E7 - OUT
+      match first & 0x07 {
+        0 => Op::LOOPNZ(iter.next()?),
+        1 => Op::LOOPZ(iter.next()?),
+        2 => Op::LOOP(iter.next()?),
+        3 => Op::JCXZ(iter.next()?),
+        4 => Op::IN_VARIABLE(OpWordByte::BYTE, iter.next()?),
+        5 => Op::IN_VARIABLE(OpWordByte::WORD, iter.next()?),
+        6 => Op::OUT_VARIABLE(OpWordByte::BYTE, iter.next()?),
+        7 => Op::OUT_VARIABLE(OpWordByte::WORD, iter.next()?),
+      }
     },
     0xE8 => {
       // E8 - CALL
@@ -810,6 +826,16 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
       // EB - JMP
       // EC..ED - IN
       // EE..EF - OUT
+      match first & 0x07 {
+        0 => Op::CALL_WITHIN_DIRECT(iterNextU16(iter)?),
+        1 => Op::JMP_WITHIN_DIRECT(iterNextU16(iter)?),
+        2 => Op::JMP_INTER_DIRECT(iterNextU16(iter)?, iterNextU16(iter)?),
+        3 => Op::JMP_WITHIN_DIRECT_SHORT(iter.next()?),
+        4 => Op::IN_FIXED(OpWordByte::BYTE),
+        5 => Op::IN_FIXED(OpWordByte::WORD),
+        6 => Op::OUT_FIXED(OpWordByte::BYTE),
+        7 => Op::OUT_FIXED(OpWordByte::WORD),
+      }
     },
     0xF0 => {
       // F0 - LOCK
@@ -821,6 +847,36 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
       // TEST, -, NOT, NEG, MUL, IMUL, DIV, IDIV
       // F6 - op R/M8
       // F7 - op R/M16
+      match first & 0x07 {
+        0 => Op::LOCK(),
+        1 => return None(),
+        2 => Op::REP_UNSET(),
+        3 => Op::REP_SET(),
+        4 => Op::HLT(),
+        5 => Op::CMC(),
+        6..=7 => {
+          let second = iter.next()?;
+          let rm = match first & 0x01 {
+            0 => OpModRmDual::BYTE(parseModRmByte(second, iter)?),
+            1 => OpModRmDual::WORD(parseModRmWord(second, iter)?),
+          };
+          match (second >> 3) & 0x07 {
+            0 => match rm {
+              OpModRmDual::BYTE(rm_raw) =>
+                Op::TEST_IMM_BYTE(rm_raw, iter.next()?),
+              OpModRmDual::WORD(rm_raw) =>
+                Op::TEST_IMM_WORD(rm_raw, iterNextU16(iter)?),
+            },
+            1 => return None(),
+            2 => Op::NOT(rm),
+            3 => Op::NEG(rm),
+            4 => Op::MUL(rm),
+            5 => Op::IMUL(rm),
+            6 => Op::DIV(rm),
+            7 => Op::IDIV(rm),
+          }
+        },
+      }
     },
     0xF8 => {
       // F8 - CLC
@@ -833,6 +889,37 @@ pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
       // FE - op R/M8
       // INC, DEC, CALL, CALL, JMP, JMP, PUSH, -
       // FF - op MEM16
+      match first & 0x07 {
+        0 => Op::CLC(),
+        1 => Op::STC(),
+        2 => Op::CLI(),
+        3 => Op::STI(),
+        4 => Op::CLD(),
+        5 => Op::STD(),
+        6 => {
+          let second = iter.next()?;
+          let rm = parseModRmByte(second, iter)?;
+          match (second >> 3) & 0x07 {
+            0 => Op::INC_RM(OpModRmDual::BYTE(rm)),
+            1 => Op::DEC_RM(OpModRmDual::BYTE(rm)),
+            _ => return None(),
+          }
+        },
+        7 => {
+          let second = iter.next()?;
+          let rm = parseModRmWord(second, iter)?;
+          match (second >> 3) & 0x07 {
+            0 => Op::INC_RM(OpModRmDual::WORD(rm)),
+            1 => Op::DEC_RM(OpModRmDual::WORD(rm)),
+            2 => Op::CALL_WITHIN_INDIRECT(rm),
+            3 => Op::CALL_INTER_INDIRECT(rm),
+            4 => Op::JMP_WITHIN_INDIRECT(rm),
+            5 => Op::JMP_INTER_INDIRECT(rm),
+            6 => Op::PUSH_RM(rm),
+            _ => return None(),
+          }
+        },
+      }
     },
   })
 }
