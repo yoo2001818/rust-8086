@@ -217,7 +217,7 @@ pub enum Op {
   SEGMENT(OpSegmentRegister),
 }
 
-pub fn parseRegisterWord(byte: u8): OpRegisterWord {
+pub fn parseRegisterWord(byte: u8) -> OpRegisterWord {
   match byte {
     0 => OpRegisterWord::AX,
     1 => OpRegisterWord::CX,
@@ -231,7 +231,7 @@ pub fn parseRegisterWord(byte: u8): OpRegisterWord {
   }
 }
 
-pub fn parseRegisterByte(byte: u8): OpRegisterByte {
+pub fn parseRegisterByte(byte: u8) -> OpRegisterByte {
   match byte {
     0 => OpRegisterByte::AL,
     1 => OpRegisterByte::CL,
@@ -245,7 +245,7 @@ pub fn parseRegisterByte(byte: u8): OpRegisterByte {
   }
 }
 
-pub fn parseAddressType(byte: u8): OpAddressType {
+pub fn parseAddressType(byte: u8) -> OpAddressType {
   match byte {
     0 => OpAddressType::BX_SI,
     1 => OpAddressType::BX_DI,
@@ -259,7 +259,7 @@ pub fn parseAddressType(byte: u8): OpAddressType {
   }
 }
 
-pub fn parseSegmentRegister(byte: u8): Option<OpSegmentRegister> {
+pub fn parseSegmentRegister(byte: u8) -> Option<OpSegmentRegister> {
   match byte {
     0 => Some(OpSegmentRegister::ES),
     1 => Some(OpSegmentRegister::CS),
@@ -269,12 +269,12 @@ pub fn parseSegmentRegister(byte: u8): Option<OpSegmentRegister> {
   }
 }
 
-fn iterNextU16 (iter: &mut Iterator<u8>): Option<u16> {
+fn iterNextU16 (iter: &mut Iterator<u8>) -> Option<u16> {
   Some(iter.next()? as u16 +
     ((iter.next()? as u16) << 8))
 }
 
-pub fn parseModRmWord(byte: u8, iter: &mut Iterator<u8>): Option<OpModRmWord> {
+pub fn parseModRmWord(byte: u8, iter: &mut Iterator<u8>) -> Option<OpModRmWord> {
   let mod_val = (byte >> 5) & 0x07;
   let rm_val = byte & 0x03;
   Some(match rm_val {
@@ -294,7 +294,7 @@ pub fn parseModRmWord(byte: u8, iter: &mut Iterator<u8>): Option<OpModRmWord> {
   })
 }
 
-pub fn parseModRmByte(byte: u8, iter: &mut Iterator<u8>): Option<OpModRmByte> {
+pub fn parseModRmByte(byte: u8, iter: &mut Iterator<u8>) -> Option<OpModRmByte> {
   let mod_val = (byte >> 5) & 0x07;
   let rm_val = byte & 0x03;
   Some(match rm_val {
@@ -316,7 +316,7 @@ pub fn parseModRmByte(byte: u8, iter: &mut Iterator<u8>): Option<OpModRmByte> {
 
 pub fn parseModRegRmByte(
   byte: u8, iter: &mut Iterator<u8>,
-): Option<OpModRegRmByte> {
+) -> Option<OpModRegRmByte> {
   let reg = parseRegisterByte((byte >> 3) & 0x7);
   let rm = parseModRmByte(byte, iter)?;
   return Some(OpModRegRmByte(reg, rm));
@@ -324,7 +324,7 @@ pub fn parseModRegRmByte(
 
 pub fn parseModRegRmWord(
   byte: u8, iter: &mut Iterator<u8>,
-): Option<OpModRegRmWord> {
+) -> Option<OpModRegRmWord> {
   let reg = parseRegisterWord((byte >> 3) & 0x7);
   let rm = parseModRmWord(byte, iter)?;
   return Some(OpModRegRmWord(reg, rm));
@@ -332,7 +332,7 @@ pub fn parseModRegRmWord(
 
 pub fn parseBinarySrcDest(
   first: u8, iter: &mut Iterator<u8>,
-): Option<OpBinarySrcDest> {
+) -> Option<OpBinarySrcDest> {
   Some(match first & 0x07 {
     0..=3 => {
       let second = iter.next()?;
@@ -345,14 +345,14 @@ pub fn parseBinarySrcDest(
       }
     },
     4 => OpBinarySrcDest::BYTE(
-      OpBinarySrcDestByte::IMM_AX(iter.next()?),
+      OpBinarySrcDestByte::IMM_AX(iter.next()?)),
     5 => OpBinarySrcDest::WORD(
       OpBinarySrcDestWord::IMM_AX(iterNextU16(iter)?)),
     _ => panic!("..."),
   })
 }
 
-pub fn parseOp(iter: &mut Iterator<u8>): Option<Op> {
+pub fn parseOp(iter: &mut Iterator<u8>) -> Option<Op> {
   const first = iter.next()?;
   Some(match first & 0xf8 {
     0x00 => {
