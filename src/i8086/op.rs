@@ -1,6 +1,7 @@
 use std::iter::Iterator;
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum OpRegisterWord {
   Ax,
   Cx,
@@ -13,6 +14,7 @@ pub enum OpRegisterWord {
 }
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum OpRegisterByte {
   Al,
   Cl,
@@ -25,6 +27,7 @@ pub enum OpRegisterByte {
 }
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum OpSegmentRegister {
   Es,
   Cs,
@@ -33,6 +36,7 @@ pub enum OpSegmentRegister {
 }
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum OpAddressType {
   BxSi,
   BxDi,
@@ -45,6 +49,7 @@ pub enum OpAddressType {
 }
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum OpModRm<T> {
   Register(T),
   Address(OpAddressType),
@@ -57,30 +62,35 @@ pub type OpModRmWord = OpModRm<OpRegisterWord>;
 pub type OpModRmByte = OpModRm<OpRegisterByte>;
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum OpModRmDual {
   Word(OpModRmWord),
   Byte(OpModRmByte),
 }
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum OpDirectionType {
   RegToRm,
   RmToReg,
 }
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub struct OpModRegRm<T>(T, OpModRm<T>);
 
 pub type OpModRegRmWord = OpModRegRm<OpRegisterWord>;
 pub type OpModRegRmByte = OpModRegRm<OpRegisterByte>;
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum OpModRegRmDual {
   Word(OpModRegRmWord),
   Byte(OpModRegRmByte),
 }
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum OpBinarySrcDest<T, V> {
   RegToRm(OpModRegRm<T>),
   RmToReg(OpModRegRm<T>),
@@ -93,24 +103,28 @@ pub type OpBinarySrcDestWord = OpBinarySrcDest<OpRegisterWord, u16>;
 pub type OpBinarySrcDestByte = OpBinarySrcDest<OpRegisterByte, u8>;
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum OpBinarySrcDestDual {
   Word(OpBinarySrcDestWord),
   Byte(OpBinarySrcDestByte),
 }
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum OpRotateType {
   One,
   Cl,
 }
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum OpWordByte {
   Byte,
   Word,
 }
 
 #[derive(PartialEq)]
+#[derive(Debug)]
 pub enum Op {
   Mov(OpBinarySrcDestDual),
   MovWordSeg(OpDirectionType, OpModRmWord, OpSegmentRegister),
@@ -233,7 +247,7 @@ pub enum Op {
   Segment(OpSegmentRegister),
 }
 
-pub fn parseRegisterWord(byte: u8) -> Option<OpRegisterWord> {
+pub fn parse_register_word(byte: u8) -> Option<OpRegisterWord> {
   Some(match byte {
     0 => OpRegisterWord::Ax,
     1 => OpRegisterWord::Cx,
@@ -247,7 +261,7 @@ pub fn parseRegisterWord(byte: u8) -> Option<OpRegisterWord> {
   })
 }
 
-pub fn parseRegisterByte(byte: u8) -> Option<OpRegisterByte> {
+pub fn parse_register_byte(byte: u8) -> Option<OpRegisterByte> {
   Some(match byte {
     0 => OpRegisterByte::Al,
     1 => OpRegisterByte::Cl,
@@ -261,7 +275,7 @@ pub fn parseRegisterByte(byte: u8) -> Option<OpRegisterByte> {
   })
 }
 
-pub fn parseAddressType(byte: u8) -> Option<OpAddressType> {
+pub fn parse_address_type(byte: u8) -> Option<OpAddressType> {
   Some(match byte {
     0 => OpAddressType::BxSi,
     1 => OpAddressType::BxDi,
@@ -275,7 +289,7 @@ pub fn parseAddressType(byte: u8) -> Option<OpAddressType> {
   })
 }
 
-pub fn parseSegmentRegister(byte: u8) -> Option<OpSegmentRegister> {
+pub fn parse_segment_register(byte: u8) -> Option<OpSegmentRegister> {
   Some(match byte {
     0 => OpSegmentRegister::Es,
     1 => OpSegmentRegister::Cs,
@@ -285,105 +299,105 @@ pub fn parseSegmentRegister(byte: u8) -> Option<OpSegmentRegister> {
   })
 }
 
-fn iterNextU16 (iter: &mut dyn Iterator<Item = u8>) -> Option<u16> {
+fn iter_next_u16 (iter: &mut dyn Iterator<Item = u8>) -> Option<u16> {
   Some(iter.next()? as u16 +
     ((iter.next()? as u16) << 8))
 }
 
-pub fn parseModRmWord(
+pub fn parse_mod_rm_word(
   byte: u8,
   iter: &mut dyn Iterator<Item = u8>,
 ) -> Option<OpModRmWord> {
   let mod_val = (byte >> 5) & 0x07;
   let rm_val = byte & 0x03;
   Some(match rm_val {
-    0 => OpModRmWord::Register(parseRegisterWord(mod_val)?),
+    0 => OpModRmWord::Register(parse_register_word(mod_val)?),
     1 => {
-      let addr_type = parseAddressType(mod_val)?;
+      let addr_type = parse_address_type(mod_val)?;
       if addr_type == OpAddressType::Bp {
-        OpModRmWord::Direct(iterNextU16(iter)?)
+        OpModRmWord::Direct(iter_next_u16(iter)?)
       } else {
         OpModRmWord::Address(addr_type)
       }
     }
-    2 => OpModRmWord::AddressDispByte(parseAddressType(mod_val)?,
+    2 => OpModRmWord::AddressDispByte(parse_address_type(mod_val)?,
       iter.next()?),
-    3 => OpModRmWord::AddressDispWord(parseAddressType(mod_val)?,
-      iterNextU16(iter)?),
+    3 => OpModRmWord::AddressDispWord(parse_address_type(mod_val)?,
+      iter_next_u16(iter)?),
     _ => return None,
   })
 }
 
-pub fn parseModRmByte(
+pub fn parse_mod_rm_byte(
   byte: u8,
   iter: &mut dyn Iterator<Item = u8>,
 ) -> Option<OpModRmByte> {
   let mod_val = (byte >> 5) & 0x07;
   let rm_val = byte & 0x03;
   Some(match rm_val {
-    0 => OpModRmByte::Register(parseRegisterByte(mod_val)?),
+    0 => OpModRmByte::Register(parse_register_byte(mod_val)?),
     1 => {
-      let addr_type = parseAddressType(mod_val)?;
+      let addr_type = parse_address_type(mod_val)?;
       if addr_type == OpAddressType::Bp {
-        OpModRmByte::Direct(iterNextU16(iter)?)
+        OpModRmByte::Direct(iter_next_u16(iter)?)
       } else {
         OpModRmByte::Address(addr_type)
       }
     }
-    2 => OpModRmByte::AddressDispByte(parseAddressType(mod_val)?,
+    2 => OpModRmByte::AddressDispByte(parse_address_type(mod_val)?,
       iter.next()?),
-    3 => OpModRmByte::AddressDispWord(parseAddressType(mod_val)?,
-      iterNextU16(iter)?),
+    3 => OpModRmByte::AddressDispWord(parse_address_type(mod_val)?,
+      iter_next_u16(iter)?),
     _ => return None,
   })
 }
 
-pub fn parseModRegRmByte(
+pub fn parse_mod_reg_rm_byte(
   byte: u8, iter: &mut dyn Iterator<Item = u8>,
 ) -> Option<OpModRegRmByte> {
-  let reg = parseRegisterByte((byte >> 3) & 0x7)?;
-  let rm = parseModRmByte(byte, iter)?;
+  let reg = parse_register_byte((byte >> 3) & 0x7)?;
+  let rm = parse_mod_rm_byte(byte, iter)?;
   return Some(OpModRegRm::<OpRegisterByte>(reg, rm));
 }
 
-pub fn parseModRegRmWord(
+pub fn parse_mod_reg_rm_word(
   byte: u8, iter: &mut dyn Iterator<Item = u8>,
 ) -> Option<OpModRegRmWord> {
-  let reg = parseRegisterWord((byte >> 3) & 0x7)?;
-  let rm = parseModRmWord(byte, iter)?;
+  let reg = parse_register_word((byte >> 3) & 0x7)?;
+  let rm = parse_mod_rm_word(byte, iter)?;
   return Some(OpModRegRm::<OpRegisterWord>(reg, rm));
 }
 
-pub fn parseBinarySrcDest(
+pub fn parse_binary_src_dest(
   first: u8, iter: &mut dyn Iterator<Item = u8>,
 ) -> Option<OpBinarySrcDestDual> {
   Some(match first & 0x07 {
     0..=3 => {
       let second = iter.next()?;
       match first & 0x03 {
-        0 => OpBinarySrcDestDual::Byte(OpBinarySrcDestByte::RegToRm(parseModRegRmByte(second, iter)?)),
-        1 => OpBinarySrcDestDual::Word(OpBinarySrcDestWord::RegToRm(parseModRegRmWord(second, iter)?)),
-        2 => OpBinarySrcDestDual::Byte(OpBinarySrcDestByte::RmToReg(parseModRegRmByte(second, iter)?)),
-        3 => OpBinarySrcDestDual::Word(OpBinarySrcDestWord::RmToReg(parseModRegRmWord(second, iter)?)),
+        0 => OpBinarySrcDestDual::Byte(OpBinarySrcDestByte::RegToRm(parse_mod_reg_rm_byte(second, iter)?)),
+        1 => OpBinarySrcDestDual::Word(OpBinarySrcDestWord::RegToRm(parse_mod_reg_rm_word(second, iter)?)),
+        2 => OpBinarySrcDestDual::Byte(OpBinarySrcDestByte::RmToReg(parse_mod_reg_rm_byte(second, iter)?)),
+        3 => OpBinarySrcDestDual::Word(OpBinarySrcDestWord::RmToReg(parse_mod_reg_rm_word(second, iter)?)),
         _ => panic!("This should never happen"),
       }
     },
     4 => OpBinarySrcDestDual::Byte(
       OpBinarySrcDestByte::ImmAx(iter.next()?)),
     5 => OpBinarySrcDestDual::Word(
-      OpBinarySrcDestWord::ImmAx(iterNextU16(iter)?)),
+      OpBinarySrcDestWord::ImmAx(iter_next_u16(iter)?)),
     _ => panic!("..."),
   })
 }
 
-pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
+pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
   let first = iter.next()?;
   let first_octet = first & 0x07;
   Some(match first & 0xf8 {
     0x00 => {
       // ADD, PUSH ES, POP ES
       match first & 0x07 {
-        0..=5 => Op::Add(parseBinarySrcDest(first, iter)?),
+        0..=5 => Op::Add(parse_binary_src_dest(first, iter)?),
         6 => Op::PushSeg(OpSegmentRegister::Es),
         7 => Op::PopSeg(OpSegmentRegister::Es),
         _ => return None,
@@ -392,7 +406,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     0x08 => {
       // OR, PUSH CS
       match first_octet {
-        0..=5 => Op::Or(parseBinarySrcDest(first, iter)?),
+        0..=5 => Op::Or(parse_binary_src_dest(first, iter)?),
         6 => Op::PushSeg(OpSegmentRegister::Cs),
         7 => Op::PopSeg(OpSegmentRegister::Cs),
         _ => return None,
@@ -401,7 +415,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     0x10 => {
       // ADC, PUSH SS, POP SS
       match first_octet {
-        0..=5 => Op::Adc(parseBinarySrcDest(first, iter)?),
+        0..=5 => Op::Adc(parse_binary_src_dest(first, iter)?),
         6 => Op::PushSeg(OpSegmentRegister::Ss),
         7 => Op::PopSeg(OpSegmentRegister::Ss),
         _ => return None,
@@ -410,7 +424,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     0x18 => {
       // SBB, PUSH DS, POP DS
       match first_octet {
-        0..=5 => Op::Sbb(parseBinarySrcDest(first, iter)?),
+        0..=5 => Op::Sbb(parse_binary_src_dest(first, iter)?),
         6 => Op::PushSeg(OpSegmentRegister::Ds),
         7 => Op::PopSeg(OpSegmentRegister::Ds),
         _ => return None,
@@ -419,7 +433,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     0x20 => {
       // AND, SELECT ES, DAA
       match first_octet {
-        0..=5 => Op::And(parseBinarySrcDest(first, iter)?),
+        0..=5 => Op::And(parse_binary_src_dest(first, iter)?),
         6 => Op::Segment(OpSegmentRegister::Es),
         7 => Op::Daa,
         _ => return None,
@@ -428,7 +442,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     0x28 => {
       // SUB, SELECT CS, DAS
       match first_octet {
-        0..=5 => Op::Sub(parseBinarySrcDest(first, iter)?),
+        0..=5 => Op::Sub(parse_binary_src_dest(first, iter)?),
         6 => Op::Segment(OpSegmentRegister::Cs),
         7 => Op::Das,
         _ => return None,
@@ -437,7 +451,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     0x30 => {
       // XOR, SELECT SS, AAA
       match first_octet {
-        0..=5 => Op::Xor(parseBinarySrcDest(first, iter)?),
+        0..=5 => Op::Xor(parse_binary_src_dest(first, iter)?),
         6 => Op::Segment(OpSegmentRegister::Ss),
         7 => Op::Aaa,
         _ => return None,
@@ -446,7 +460,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     0x38 => {
       // CMP, SELECT DS, AAS
       match first_octet {
-        0..=5 => Op::Cmp(parseBinarySrcDest(first, iter)?),
+        0..=5 => Op::Cmp(parse_binary_src_dest(first, iter)?),
         6 => Op::Segment(OpSegmentRegister::Ds),
         7 => Op::Aas,
         _ => return None,
@@ -454,19 +468,19 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     },
     0x40 => {
       // INC
-      Op::IncReg(parseRegisterWord(first_octet)?)
+      Op::IncReg(parse_register_word(first_octet)?)
     },
     0x48 => {
       // DEC
-      Op::DecReg(parseRegisterWord(first_octet)?)
+      Op::DecReg(parse_register_word(first_octet)?)
     },
     0x50 => {
       // PUSH
-      Op::PushReg(parseRegisterWord(first_octet)?)
+      Op::PushReg(parse_register_word(first_octet)?)
     },
     0x58 => {
       // POP
-      Op::PopReg(parseRegisterWord(first_octet)?)
+      Op::PopReg(parse_register_word(first_octet)?)
     },
     0x60 => {
       // not used
@@ -520,7 +534,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       match first_octet {
         0 => {
           let second = iter.next()?;
-          let mod_rm = parseModRmByte(second, iter)?;
+          let mod_rm = parse_mod_rm_byte(second, iter)?;
           let src_dest = OpBinarySrcDestDual::Byte(
             OpBinarySrcDestByte::ImmRm(mod_rm, iter.next()?));
           match (second >> 3) & 0x07 {
@@ -537,9 +551,9 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         },
         1 => {
           let second = iter.next()?;
-          let mod_rm = parseModRmWord(second, iter)?;
+          let mod_rm = parse_mod_rm_word(second, iter)?;
           let src_dest = OpBinarySrcDestDual::Word(
-            OpBinarySrcDestWord::ImmRm(mod_rm, iterNextU16(iter)?));
+            OpBinarySrcDestWord::ImmRm(mod_rm, iter_next_u16(iter)?));
           match (second >> 3) & 0x07 {
             0 => Op::Add(src_dest),
             1 => Op::Or(src_dest),
@@ -554,7 +568,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         },
         2 => {
           let second = iter.next()?;
-          let mod_rm = parseModRmByte(second, iter)?;
+          let mod_rm = parse_mod_rm_byte(second, iter)?;
           let src_dest = OpBinarySrcDestDual::Byte(
             OpBinarySrcDestByte::ImmRm(mod_rm, iter.next()?));
           match (second >> 3) & 0x07 {
@@ -571,9 +585,9 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         },
         3 => {
           let second = iter.next()?;
-          let mod_rm = parseModRmWord(second, iter)?;
+          let mod_rm = parse_mod_rm_word(second, iter)?;
           let src_dest = OpBinarySrcDestDual::Word(
-            OpBinarySrcDestWord::ImmRm(mod_rm, iterNextU16(iter)?));
+            OpBinarySrcDestWord::ImmRm(mod_rm, iter_next_u16(iter)?));
           match (second >> 3) & 0x07 {
             0 => Op::Add(src_dest),
             1 => return None,
@@ -589,22 +603,22 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         4 => {
           // TEST
           let second = iter.next()?;
-          Op::Test(OpModRegRmDual::Byte(parseModRegRmByte(second, iter)?))
+          Op::Test(OpModRegRmDual::Byte(parse_mod_reg_rm_byte(second, iter)?))
         },
         5 => {
           // TEST
           let second = iter.next()?;
-          Op::Test(OpModRegRmDual::Word(parseModRegRmWord(second, iter)?))
+          Op::Test(OpModRegRmDual::Word(parse_mod_reg_rm_word(second, iter)?))
         },
         6 => {
           // XCHG
           let second = iter.next()?;
-          Op::XchgRmReg(OpModRegRmDual::Byte(parseModRegRmByte(second, iter)?))
+          Op::XchgRmReg(OpModRegRmDual::Byte(parse_mod_reg_rm_byte(second, iter)?))
         },
         7 => {
           // XCHG
           let second = iter.next()?;
-          Op::XchgRmReg(OpModRegRmDual::Word(parseModRegRmWord(second, iter)?))
+          Op::XchgRmReg(OpModRegRmDual::Word(parse_mod_reg_rm_word(second, iter)?))
         },
         _ => return None,
       }
@@ -621,31 +635,31 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       match first_octet {
         0..=3 => {
           // MOV
-          Op::Mov(parseBinarySrcDest(first, iter)?)
+          Op::Mov(parse_binary_src_dest(first, iter)?)
         },
         4 => {
           // mov r/m16, segreg
           let second = iter.next()?;
-          let mod_rm = parseModRmWord(second, iter)?;
-          let reg = parseSegmentRegister((second >> 3) & 0x07)?;
+          let mod_rm = parse_mod_rm_word(second, iter)?;
+          let reg = parse_segment_register((second >> 3) & 0x07)?;
           Op::MovWordSeg(OpDirectionType::RegToRm, mod_rm, reg)
         },
         5 => {
           // lea reg16, r/m16
           let second = iter.next()?;
-          Op::Lea(parseModRegRmWord(second, iter)?)
+          Op::Lea(parse_mod_reg_rm_word(second, iter)?)
         },
         6 => {
           // mov segreg, r/m16
           let second = iter.next()?;
-          let mod_rm = parseModRmWord(second, iter)?;
-          let reg = parseSegmentRegister((second >> 3) & 0x07)?;
+          let mod_rm = parse_mod_rm_word(second, iter)?;
+          let reg = parse_segment_register((second >> 3) & 0x07)?;
           Op::MovWordSeg(OpDirectionType::RmToReg, mod_rm, reg)
         },
         7 => {
           // pop r/m16 (second 000)
           let second = iter.next()?;
-          let mod_rm = parseModRmWord(second, iter)?;
+          let mod_rm = parse_mod_rm_word(second, iter)?;
           match (second >> 3) & 0x07 {
             0 => Op::PopRm(mod_rm),
             _ => return None,
@@ -657,7 +671,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     0x90 => {
       // 90 - NOP
       // 91..97 - XCHG
-      Op::XchgRegAx(parseRegisterWord(first_octet)?)
+      Op::XchgRegAx(parse_register_word(first_octet)?)
     },
     0x98 => {
       // 98 - CBW
@@ -671,7 +685,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       match first_octet {
         0 => Op::Cbw,
         1 => Op::Cwd,
-        2 => Op::CallInterDirect(iterNextU16(iter)?, iterNextU16(iter)?),
+        2 => Op::CallInterDirect(iter_next_u16(iter)?, iter_next_u16(iter)?),
         3 => Op::Wait,
         4 => Op::Pushf,
         5 => Op::Popf,
@@ -685,10 +699,10 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       // A4..A5 - MOVS
       // A6..A7 - CMPS
       match first_octet {
-        0 => Op::MovMemToAl(iterNextU16(iter)?),
-        1 => Op::MovMemToAx(iterNextU16(iter)?),
-        2 => Op::MovAlToMem(iterNextU16(iter)?),
-        3 => Op::MovAxToMem(iterNextU16(iter)?),
+        0 => Op::MovMemToAl(iter_next_u16(iter)?),
+        1 => Op::MovMemToAx(iter_next_u16(iter)?),
+        2 => Op::MovAlToMem(iter_next_u16(iter)?),
+        3 => Op::MovAxToMem(iter_next_u16(iter)?),
         4 => Op::Movs(OpWordByte::Byte),
         5 => Op::Movs(OpWordByte::Word),
         6 => Op::Cmps(OpWordByte::Byte),
@@ -703,7 +717,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       // AE..AF - SCAS
       match first_octet {
         0 => Op::TestImmAl(iter.next()?),
-        1 => Op::TestImmAx(iterNextU16(iter)?),
+        1 => Op::TestImmAx(iter_next_u16(iter)?),
         2 => Op::Stos(OpWordByte::Byte),
         3 => Op::Stos(OpWordByte::Word),
         4 => Op::Lods(OpWordByte::Byte),
@@ -716,12 +730,12 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     0xB0 => {
       // MOV
       Op::Mov(OpBinarySrcDestDual::Byte(OpBinarySrcDestByte::ImmReg(
-        parseRegisterByte(first_octet)?, iter.next()?)))
+        parse_register_byte(first_octet)?, iter.next()?)))
     },
     0xB8 => {
       // MOV
       Op::Mov(OpBinarySrcDestDual::Word(OpBinarySrcDestWord::ImmReg(
-        parseRegisterWord(first_octet)?, iterNextU16(iter)?)))
+        parse_register_word(first_octet)?, iter_next_u16(iter)?)))
     },
     0xC0 => {
       // C0 - 
@@ -734,13 +748,13 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       match first_octet {
         0 => return None,
         1 => return None,
-        2 => Op::RetWithinImm(iterNextU16(iter)?),
+        2 => Op::RetWithinImm(iter_next_u16(iter)?),
         3 => Op::RetWithin,
-        4 => Op::Les(parseModRegRmWord(iter.next()?, iter)?),
-        5 => Op::Lds(parseModRegRmWord(iter.next()?, iter)?),
+        4 => Op::Les(parse_mod_reg_rm_word(iter.next()?, iter)?),
+        5 => Op::Lds(parse_mod_reg_rm_word(iter.next()?, iter)?),
         6 => {
           let second = iter.next()?;
-          let mod_rm = parseModRmByte(second, iter)?;
+          let mod_rm = parse_mod_rm_byte(second, iter)?;
           match (second >> 3) & 0x07 {
             0 => Op::Mov(OpBinarySrcDestDual::Byte(
               OpBinarySrcDestByte::ImmRm(mod_rm, iter.next()?))),
@@ -749,10 +763,10 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         },
         7 => {
           let second = iter.next()?;
-          let mod_rm = parseModRmWord(second, iter)?;
+          let mod_rm = parse_mod_rm_word(second, iter)?;
           match (second >> 3) & 0x07 {
             0 => Op::Mov(OpBinarySrcDestDual::Word(
-              OpBinarySrcDestWord::ImmRm(mod_rm, iterNextU16(iter)?))),
+              OpBinarySrcDestWord::ImmRm(mod_rm, iter_next_u16(iter)?))),
             _ => return None,
           }
         },
@@ -771,7 +785,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       match first_octet {
         0 => return None,
         1 => return None,
-        2 => Op::RetInterImm(iterNextU16(iter)?),
+        2 => Op::RetInterImm(iter_next_u16(iter)?),
         3 => Op::RetInter,
         4 => Op::Int(3),
         5 => Op::Int(iter.next()?),
@@ -799,8 +813,8 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
             _ => return None,
           };
           let rm = match first & 0x01 {
-            0 => OpModRmDual::Byte(parseModRmByte(second, iter)?),
-            1 => OpModRmDual::Word(parseModRmWord(second, iter)?),
+            0 => OpModRmDual::Byte(parse_mod_rm_byte(second, iter)?),
+            1 => OpModRmDual::Word(parse_mod_rm_word(second, iter)?),
             _ => return None,
           };
           match (second >> 3) & 0x07 {
@@ -839,7 +853,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     0xD8 => {
       // ESC
       let second = iter.next()?;
-      let rm = parseModRmWord(second, iter)?;
+      let rm = parse_mod_rm_word(second, iter)?;
       let esc_id = ((first & 0x7) << 3) + ((second >> 3) & 0x7);
       Op::Esc(esc_id, rm)
     },
@@ -870,9 +884,9 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       // EC..ED - IN
       // EE..EF - OUT
       match first_octet {
-        0 => Op::CallWithinDirect(iterNextU16(iter)?),
-        1 => Op::JmpWithinDirect(iterNextU16(iter)?),
-        2 => Op::JmpInterDirect(iterNextU16(iter)?, iterNextU16(iter)?),
+        0 => Op::CallWithinDirect(iter_next_u16(iter)?),
+        1 => Op::JmpWithinDirect(iter_next_u16(iter)?),
+        2 => Op::JmpInterDirect(iter_next_u16(iter)?, iter_next_u16(iter)?),
         3 => Op::JmpWithinDirectShort(iter.next()?),
         4 => Op::InFixed(OpWordByte::Byte),
         5 => Op::InFixed(OpWordByte::Word),
@@ -901,8 +915,8 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         6..=7 => {
           let second = iter.next()?;
           let rm = match first & 0x01 {
-            0 => OpModRmDual::Byte(parseModRmByte(second, iter)?),
-            1 => OpModRmDual::Word(parseModRmWord(second, iter)?),
+            0 => OpModRmDual::Byte(parse_mod_rm_byte(second, iter)?),
+            1 => OpModRmDual::Word(parse_mod_rm_word(second, iter)?),
             _ => return None,
           };
           match (second >> 3) & 0x07 {
@@ -910,7 +924,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
               OpModRmDual::Byte(rm_raw) =>
                 Op::TestImmByte(rm_raw, iter.next()?),
               OpModRmDual::Word(rm_raw) =>
-                Op::TestImmWord(rm_raw, iterNextU16(iter)?),
+                Op::TestImmWord(rm_raw, iter_next_u16(iter)?),
             },
             1 => return None,
             2 => Op::Not(rm),
@@ -945,7 +959,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         5 => Op::Std,
         6 => {
           let second = iter.next()?;
-          let rm = parseModRmByte(second, iter)?;
+          let rm = parse_mod_rm_byte(second, iter)?;
           match (second >> 3) & 0x07 {
             0 => Op::IncRm(OpModRmDual::Byte(rm)),
             1 => Op::DecRm(OpModRmDual::Byte(rm)),
@@ -954,7 +968,7 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         },
         7 => {
           let second = iter.next()?;
-          let rm = parseModRmWord(second, iter)?;
+          let rm = parse_mod_rm_word(second, iter)?;
           match (second >> 3) & 0x07 {
             0 => Op::IncRm(OpModRmDual::Word(rm)),
             1 => Op::DecRm(OpModRmDual::Word(rm)),
@@ -971,4 +985,26 @@ pub fn parseOp(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     },
     _ => return None,
   })
+}
+
+#[test]
+fn test_parse_add() {
+  {
+    let input: Vec<u8> = vec![0x00, 0x00];
+    assert_eq!(
+      parse_op(&mut input.into_iter()),
+      Some(Op::Add(OpBinarySrcDestDual::Byte(OpBinarySrcDestByte::RegToRm(
+        OpModRegRm::<OpRegisterByte>(
+          OpRegisterByte::Al,
+          OpModRmByte::Register(OpRegisterByte::Al)))
+      ))),
+    );
+  }
+  {
+    let input: Vec<u8> = vec![0x06];
+    assert_eq!(
+      parse_op(&mut input.into_iter()),
+      Some(Op::PushSeg(OpSegmentRegister::Es)),
+    );
+  }
 }
