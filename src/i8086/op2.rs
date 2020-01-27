@@ -1090,3 +1090,30 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     _ => return None,
   })
 }
+
+#[test]
+fn test_parse_add() {
+  {
+    let input: Vec<u8> = vec![0x00, 0x00];
+    assert_eq!(
+      parse_op(&mut input.into_iter()),
+      Some(Op::Binary {
+        type: OpBinaryOp::Add,
+        size: OpSize::Byte,
+        src: OpTarget::Register(OpRegister::Al),
+        dest: OpTarget::Register(OpRegister::Al),
+      }),
+    );
+  }
+  {
+    let input: Vec<u8> = vec![0x06];
+    assert_eq!(
+      parse_op(&mut input.into_iter()),
+      Some(Op::Unary {
+        type: OpUnaryOp::Push,
+        size: OpSize::Word,
+        dest: OpTarget::SegmentRegister(OpSegmentRegister::Es),
+      }),
+    );
+  }
+}
