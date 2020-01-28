@@ -20,6 +20,6 @@ impl Iterator for CPU {
   type Item = u8;
 
   fn next(&mut self) -> Option<u8> {
-
+    Some(0)
   }
 }

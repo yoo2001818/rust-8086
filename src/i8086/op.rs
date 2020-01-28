@@ -45,11 +45,10 @@ impl OpRegister {
         7 => OpRegister::Di,
         _ => return None,
       },
-      _ => return None,
     })
   }
   fn to_value(&self) -> u8 {
-    (self as u8) & 0x7
+    (*self as u8) & 0x7
   }
 }
 
@@ -73,7 +72,7 @@ impl OpSegmentRegister {
     })
   }
   fn to_value(&self) -> u8 {
-    self as u8
+    *self as u8
   }
 }
 
@@ -105,7 +104,7 @@ impl OpAddressType {
     })
   }
   fn to_value(&self) -> u8 {
-    self as u8
+    *self as u8
   }
 }
 
@@ -120,14 +119,14 @@ pub enum OpTarget {
   ImmByte(u8),
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 #[derive(Debug)]
 pub enum OpShiftType {
   One,
   Cl,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 #[derive(Debug)]
 pub enum OpSize {
   Byte,
@@ -143,7 +142,7 @@ pub enum OpCallType {
   InterIndirect(OpTarget),
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 #[derive(Debug)]
 pub enum OpBinaryOp {
   // Immed
@@ -176,7 +175,7 @@ impl OpBinaryOp {
   }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 #[derive(Debug)]
 pub enum OpUnaryOp {
   Push,
@@ -215,7 +214,7 @@ impl OpUnaryOp {
   }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 #[derive(Debug)]
 pub enum OpShiftOp {
   Rol,
@@ -244,7 +243,7 @@ impl OpShiftOp {
   }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 #[derive(Debug)]
 pub enum OpCondJmpOp {
   Jo,
@@ -272,15 +271,15 @@ pub enum OpCondJmpOp {
 #[derive(PartialEq)]
 #[derive(Debug)]
 pub enum Op {
-  Binary { type: OpBinaryOp, size: OpSize, src: OpTarget, dest: OpTarget },
-  Unary { type: OpUnaryOp, size: OpSize, dest: OpTarget },
+  Binary { op: OpBinaryOp, size: OpSize, src: OpTarget, dest: OpTarget },
+  Unary { op: OpUnaryOp, size: OpSize, dest: OpTarget },
   Shift {
-    type: OpShiftOp,
+    op: OpShiftOp,
     shift_type: OpShiftType,
     size: OpSize,
     dest: OpTarget,
   },
-  CondJmp { type: OpCondJumpOp, offset: u8 },
+  CondJmp { op: OpCondJmpOp, offset: u8 },
   InFixed(OpSize),
   InVariable(OpSize, u8),
   OutFixed(OpSize),
@@ -341,31 +340,31 @@ pub fn parse_mod_rm(
   second: u8,
   iter: &mut dyn Iterator<Item = u8>,
 ) -> Option<OpTarget> {
-  let mod_val = (second >> 5) & 0x07;
-  let rm_val = byte & 0x03;
-  Some(match rm_val {
-    0 => OpTarget::Register(OpRegister::from_value(size, mod_val)?),
-    1 => {
-      let addr_type = OpAddressType::from_value(mod_val)?;
+  let mod_val = (second >> 6) & 0x03;
+  let rm_val = second & 0x07;
+  Some(match mod_val {
+    0 => {
+      let addr_type = OpAddressType::from_value(rm_val)?;
       if addr_type == OpAddressType::Bp {
         OpTarget::Direct(iter_next_u16(iter)?)
       } else {
         OpTarget::Address(addr_type, 0)   
       }
     },
+    1 => OpTarget::Address(
+      OpAddressType::from_value(rm_val)?, iter.next()? as u16),
     2 => OpTarget::Address(
-      OpAddressType::from_value(mod_val)?, iter.next()? as u16),
-    3 => OpTarget::Address(
-      OpAddressType::from_value(mod_val)?, iter_next_u16(iter)?),
+      OpAddressType::from_value(rm_val)?, iter_next_u16(iter)?),
+    3 => OpTarget::Register(OpRegister::from_value(size, rm_val)?),
     _ => return None,
   })
 }
 
 pub fn parse_binary_group_op(
-  type: OpBinaryOp,
+  op: OpBinaryOp,
   first: u8,
   iter: &mut dyn Iterator<Item = u8>,
-) -> Option<Op::Binary> {
+) -> Option<Op> {
   Some(match first & 0x07 {
     0..=3 => {
       let second = iter.next()?;
@@ -379,13 +378,13 @@ pub fn parse_binary_group_op(
         OpRegister::from_value(size, (second >> 3) & 0x07)?);
       match (first >> 1) & 0x01 {
         0 => Op::Binary {
-          type: type,
+          op: op,
           size: size,
           src: reg,
           dest: mod_rm,
         },
         1 => Op::Binary {
-          type: type,
+          op: op,
           size: size,
           src: mod_rm,
           dest: reg,
@@ -394,13 +393,13 @@ pub fn parse_binary_group_op(
       }
     }
     4 => Op::Binary {
-      type: type,
+      op: op,
       size: OpSize::Byte,
       src: OpTarget::ImmByte(iter.next()?),
       dest: OpTarget::Register(OpRegister::Al),
     },
     5 => Op::Binary {
-      type: type,
+      op: op,
       size: OpSize::Word,
       src: OpTarget::ImmWord(iter_next_u16(iter)?),
       dest: OpTarget::Register(OpRegister::Ax),
@@ -417,12 +416,12 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       match first_octet {
         0..=5 => parse_binary_group_op(OpBinaryOp::Add, first, iter)?,
         6 => Op::Unary {
-          type: OpUnaryOp::PUSH,
+          op: OpUnaryOp::Push,
           size: OpSize::Word,
           dest: OpTarget::SegmentRegister(OpSegmentRegister::Es),
         },
         7 => Op::Unary {
-          type: OpUnaryOp::POP,
+          op: OpUnaryOp::Pop,
           size: OpSize::Word,
           dest: OpTarget::SegmentRegister(OpSegmentRegister::Es),
         },
@@ -433,12 +432,12 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       match first_octet {
         0..=5 => parse_binary_group_op(OpBinaryOp::Or, first, iter)?,
         6 => Op::Unary {
-          type: OpUnaryOp::PUSH,
+          op: OpUnaryOp::Push,
           size: OpSize::Word,
           dest: OpTarget::SegmentRegister(OpSegmentRegister::Cs),
         },
         7 => Op::Unary {
-          type: OpUnaryOp::POP,
+          op: OpUnaryOp::Pop,
           size: OpSize::Word,
           dest: OpTarget::SegmentRegister(OpSegmentRegister::Cs),
         },
@@ -449,12 +448,12 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       match first_octet {
         0..=5 => parse_binary_group_op(OpBinaryOp::Adc, first, iter)?,
         6 => Op::Unary {
-          type: OpUnaryOp::PUSH,
+          op: OpUnaryOp::Push,
           size: OpSize::Word,
           dest: OpTarget::SegmentRegister(OpSegmentRegister::Ss),
         },
         7 => Op::Unary {
-          type: OpUnaryOp::POP,
+          op: OpUnaryOp::Pop,
           size: OpSize::Word,
           dest: OpTarget::SegmentRegister(OpSegmentRegister::Ss),
         },
@@ -465,12 +464,12 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       match first_octet {
         0..=5 => parse_binary_group_op(OpBinaryOp::Sbb, first, iter)?,
         6 => Op::Unary {
-          type: OpUnaryOp::PUSH,
+          op: OpUnaryOp::Push,
           size: OpSize::Word,
           dest: OpTarget::SegmentRegister(OpSegmentRegister::Ds),
         },
         7 => Op::Unary {
-          type: OpUnaryOp::POP,
+          op: OpUnaryOp::Pop,
           size: OpSize::Word,
           dest: OpTarget::SegmentRegister(OpSegmentRegister::Ds),
         },
@@ -511,30 +510,34 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     },
     0x40 => {
       Op::Unary {
-        type: OpUnaryOp::Inc,
+        op: OpUnaryOp::Inc,
         size: OpSize::Word,
-        dest: OpRegister::from_value(OpSize::Word, first_octet)?,
+        dest: OpTarget::Register(
+          OpRegister::from_value(OpSize::Word, first_octet)?),
       }
     },
     0x48 => {
       Op::Unary {
-        type: OpUnaryOp::Dec,
+        op: OpUnaryOp::Dec,
         size: OpSize::Word,
-        dest: OpRegister::from_value(OpSize::Word, first_octet)?,
+        dest: OpTarget::Register(
+          OpRegister::from_value(OpSize::Word, first_octet)?),
       }
     },
     0x50 => {
       Op::Unary {
-        type: OpUnaryOp::Push,
+        op: OpUnaryOp::Push,
         size: OpSize::Word,
-        dest: OpRegister::from_value(OpSize::Word, first_octet)?,
+        dest: OpTarget::Register(
+          OpRegister::from_value(OpSize::Word, first_octet)?),
       }
     },
     0x58 => {
       Op::Unary {
-        type: OpUnaryOp::Pop,
+        op: OpUnaryOp::Pop,
         size: OpSize::Word,
-        dest: OpRegister::from_value(OpSize::Word, first_octet)?,
+        dest: OpTarget::Register(
+          OpRegister::from_value(OpSize::Word, first_octet)?),
       }
     },
     0x60 => {
@@ -558,7 +561,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         7 => OpCondJmpOp::Ja,
         _ => panic!("This should not happen"),
       };
-      Op::CondJmp { type: jmp_type, offset: second }
+      Op::CondJmp { op: jmp_type, offset: second }
     },
     0x78 => {
       let second = iter.next()?;
@@ -573,7 +576,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         7 => OpCondJmpOp::Jg,
         _ => panic!("This should not happen"),
       };
-      Op::CondJmp { type: jmp_type, offset: second }
+      Op::CondJmp { op: jmp_type, offset: second }
     },
     0x80 => {
       // ADD, OR, ADC, SBB, AND, SUB, XOR, CMP
@@ -595,9 +598,9 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
             _ => panic!("This should never happen"),
           };
           let mod_rm = parse_mod_rm(size, second, iter)?;
-          let type = OpBinaryOp::from_immed((second >> 3) & 0x07)?;
+          let op = OpBinaryOp::from_immed((second >> 3) & 0x07)?;
           Op::Binary {
-            type: type,
+            op: op,
             size: size,
             src: match first & 0x03 {
               1 => OpTarget::ImmWord(iter_next_u16(iter)?),
@@ -607,6 +610,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
           }
         },
         4..=5 => {
+          let second = iter.next()?;
           let size = match first & 0x01 {
             0 => OpSize::Byte,
             1 => OpSize::Word,
@@ -615,13 +619,14 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
           let mod_rm = parse_mod_rm(size, second, iter)?;
           let reg = OpRegister::from_value(size, (second >> 3) & 0x07)?;
           Op::Binary {
-            type: OpBinaryOp::Test,
+            op: OpBinaryOp::Test,
             size: size,
             src: OpTarget::Register(reg),
             dest: mod_rm,
           }
         },
         6..=7 => {
+          let second = iter.next()?;
           let size = match first & 0x01 {
             0 => OpSize::Byte,
             1 => OpSize::Word,
@@ -630,7 +635,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
           let mod_rm = parse_mod_rm(size, second, iter)?;
           let reg = OpRegister::from_value(size, (second >> 3) & 0x07)?;
           Op::Binary {
-            type: OpBinaryOp::Xchg,
+            op: OpBinaryOp::Xchg,
             size: size,
             src: OpTarget::Register(reg),
             dest: mod_rm,
@@ -647,11 +652,11 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       // 8C - MOV
       // 8D - LEA
       // 8E - MOV
-      // 8F - POP
+      // 8F - Pop
       match first_octet {
         0..=3 => {
           // MOV
-          parse_binary_group_op(OpBinaryOp::MOV, first, iter)?
+          parse_binary_group_op(OpBinaryOp::Mov, first, iter)?
         },
         4 => {
           // MOV r/m16, segreg
@@ -659,7 +664,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
           let mod_rm = parse_mod_rm(OpSize::Word, second, iter)?;
           let reg = OpSegmentRegister::from_value((second >> 3) & 0x07)?;
           Op::Binary {
-            type: OpBinaryOp::MOV,
+            op: OpBinaryOp::Mov,
             size: OpSize::Word,
             src: OpTarget::SegmentRegister(reg),
             dest: mod_rm,
@@ -669,7 +674,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
           // LEA reg16, r/m16
           let second = iter.next()?;
           let mod_rm = parse_mod_rm(OpSize::Word, second, iter)?;
-          let reg = OpRegister::from_value((second >> 3) & 0x07)?;
+          let reg = OpRegister::from_value(OpSize::Word, (second >> 3) & 0x07)?;
           Op::Lea(reg, mod_rm)
         },
         6 => {
@@ -678,30 +683,31 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
           let mod_rm = parse_mod_rm(OpSize::Word, second, iter)?;
           let reg = OpSegmentRegister::from_value((second >> 3) & 0x07)?;
           Op::Binary {
-            type: OpBinaryOp::MOV,
+            op: OpBinaryOp::Mov,
             size: OpSize::Word,
             src: mod_rm,
             dest: OpTarget::SegmentRegister(reg),
           }
         },
         7 => {
-          // POP r/m16 (second 000)
+          // Pop r/m16 (second 000)
           let second = iter.next()?;
           let mod_rm = parse_mod_rm(OpSize::Word, second, iter)?;
           match (second >> 3) & 0x07 {
             0 => Op::Unary {
-              type: OpUnaryOp::Pop,
+              op: OpUnaryOp::Pop,
               size: OpSize::Word,
               dest: mod_rm,
             },
             _ => return None,
           }
         },
+        _ => return None,
       }
     },
     0x90 => {
       Op::Binary {
-        type: OpBinaryOp::Xchg,
+        op: OpBinaryOp::Xchg,
         size: OpSize::Word,
         src: OpTarget::Register(OpRegister::Ax),
         dest: OpTarget::Register(
@@ -727,25 +733,25 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       // A6..A7 - CMPS
       match first_octet {
         0 => Op::Binary {
-          type: OpBinaryOp::Mov,
+          op: OpBinaryOp::Mov,
           size: OpSize::Byte,
           src: OpTarget::Direct(iter_next_u16(iter)?),
           dest: OpTarget::Register(OpRegister::Al),
         },
         1 => Op::Binary {
-          type: OpBinaryOp::Mov,
+          op: OpBinaryOp::Mov,
           size: OpSize::Word,
           src: OpTarget::Direct(iter_next_u16(iter)?),
           dest: OpTarget::Register(OpRegister::Ax),
         },
         2 => Op::Binary {
-          type: OpBinaryOp::Mov,
+          op: OpBinaryOp::Mov,
           size: OpSize::Byte,
           src: OpTarget::Register(OpRegister::Al),
           dest: OpTarget::Direct(iter_next_u16(iter)?),
         },
         3 => Op::Binary {
-          type: OpBinaryOp::Mov,
+          op: OpBinaryOp::Mov,
           size: OpSize::Word,
           src: OpTarget::Register(OpRegister::Ax),
           dest: OpTarget::Direct(iter_next_u16(iter)?),
@@ -755,7 +761,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         6 => Op::Movs(OpSize::Byte),
         7 => Op::Movs(OpSize::Word),
         _ => return None,
-      },
+      }
     },
     0xA8 => {
       // A8..A9 - TEST
@@ -764,13 +770,13 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       // AE..AF - SCAS
       match first_octet {
         0 => Op::Binary {
-          type: OpBinaryOp::Test,
+          op: OpBinaryOp::Test,
           size: OpSize::Byte,
           src: OpTarget::ImmByte(iter.next()?),
           dest: OpTarget::Register(OpRegister::Al),
         },
         1 => Op::Binary {
-          type: OpBinaryOp::Test,
+          op: OpBinaryOp::Test,
           size: OpSize::Word,
           src: OpTarget::ImmWord(iter_next_u16(iter)?),
           dest: OpTarget::Register(OpRegister::Ax),
@@ -787,22 +793,22 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     0xB0 => {
       // MOV
       Op::Binary {
-        type: OpBinaryOp::Mov,
+        op: OpBinaryOp::Mov,
         size: OpSize::Byte,
         src: OpTarget::ImmByte(iter.next()?),
         dest: OpTarget::Register(
-          OpRegister::from_value(OpSize::Byte, first_octet)),
-      },
+          OpRegister::from_value(OpSize::Byte, first_octet)?),
+      }
     },
     0xB8 => {
       // MOV
       Op::Binary {
-        type: OpBinaryOp::Mov,
+        op: OpBinaryOp::Mov,
         size: OpSize::Word,
         src: OpTarget::ImmWord(iter_next_u16(iter)?),
         dest: OpTarget::Register(
-          OpRegister::from_value(OpSize::Word, first_octet)),
-      },
+          OpRegister::from_value(OpSize::Word, first_octet)?),
+      }
     },
     0xC0 => {
       // C0 - 
@@ -820,21 +826,21 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         4 => {
           let second = iter.next()?;
           let mod_rm = parse_mod_rm(OpSize::Word, second, iter)?;
-          let reg = OpRegister::from_value((second >> 3) & 0x07)?;
+          let reg = OpRegister::from_value(OpSize::Word, (second >> 3) & 0x07)?;
           Op::Les(reg, mod_rm)
         }
         5 => {
           let second = iter.next()?;
           let mod_rm = parse_mod_rm(OpSize::Word, second, iter)?;
-          let reg = OpRegister::from_value((second >> 3) & 0x07)?;
+          let reg = OpRegister::from_value(OpSize::Word, (second >> 3) & 0x07)?;
           Op::Lds(reg, mod_rm)
         }
         6 => {
           let second = iter.next()?;
-          let mod_rm = parse_mod_rm_byte(second, iter)?;
+          let mod_rm = parse_mod_rm(OpSize::Byte, second, iter)?;
           match (second >> 3) & 0x07 {
             0 => Op::Binary {
-              type: OpBinaryOp::Mov,
+              op: OpBinaryOp::Mov,
               size: OpSize::Byte,
               src: OpTarget::ImmByte(iter.next()?),
               dest: mod_rm,
@@ -844,10 +850,10 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         },
         7 => {
           let second = iter.next()?;
-          let mod_rm = parse_mod_rm_word(second, iter)?;
+          let mod_rm = parse_mod_rm(OpSize::Word, second, iter)?;
           match (second >> 3) & 0x07 {
             0 => Op::Binary {
-              type: OpBinaryOp::Mov,
+              op: OpBinaryOp::Mov,
               size: OpSize::Word,
               src: OpTarget::ImmWord(iter_next_u16(iter)?),
               dest: mod_rm,
@@ -905,7 +911,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
           };
           let shift_op = OpShiftOp::from_value((second >> 3) & 0x07)?;
           Op::Shift {
-            type: shift_op,
+            op: shift_op,
             shift_type: shift_type,
             size: size,
             dest: mod_rm,
@@ -956,12 +962,13 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
             3 => OpCondJmpOp::Jcxz,
             _ => panic!("This should not happen"),
           };
-          Op::CondJmp { type: jmp_type, offset: second }
+          Op::CondJmp { op: jmp_type, offset: second }
         },
         4 => Op::InVariable(OpSize::Byte, iter.next()?),
         5 => Op::InVariable(OpSize::Word, iter.next()?),
         6 => Op::OutVariable(OpSize::Byte, iter.next()?),
         7 => Op::OutVariable(OpSize::Word, iter.next()?),
+        _ => return None,
       }
     },
     0xE8 => {
@@ -1017,16 +1024,16 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
                 OpSize::Word => OpTarget::ImmWord(iter_next_u16(iter)?),
               };
               Op::Binary {
-                type: OpBinaryOp::Test,
+                op: OpBinaryOp::Test,
                 size: size,
                 src: imm,
                 dest: mod_rm,
               }
             },
             _ => {
-              let type = OpUnaryOp::from_grp1(type_octet)?;
+              let op = OpUnaryOp::from_grp1(type_octet)?;
               Op::Unary {
-                type: type,
+                op: op,
                 size: size,
                 dest: mod_rm,
               }
@@ -1045,7 +1052,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       // FD - STD
       // INC, DEC, -, -, -, -, -, -
       // FE - op R/M8
-      // INC, DEC, CALL, CALL, JMP, JMP, PUSH, -
+      // INC, DEC, CALL, CALL, JMP, JMP, Push, -
       // FF - op MEM16
       match first_octet {
         0 => Op::Clc,
@@ -1058,9 +1065,9 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
           let second = iter.next()?;
           let mod_rm = parse_mod_rm(OpSize::Byte, second, iter)?;
           let type_octet = (second >> 3) & 0x07;
-          let type = OpUnaryOp::from_grp2(type_octet)?;
+          let op = OpUnaryOp::from_grp2(type_octet)?;
           Op::Unary {
-            type: type,
+            op: op,
             size: OpSize::Byte,
             dest: mod_rm,
           }
@@ -1075,9 +1082,9 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
             4 => Op::Jmp(OpCallType::WithinIndirect(mod_rm)),
             5 => Op::Jmp(OpCallType::InterIndirect(mod_rm)),
             _ => {
-              let type = OpUnaryOp::from_grp2(type_octet)?;
+              let op = OpUnaryOp::from_grp2(type_octet)?;
               Op::Unary {
-                type: type,
+                op: op,
                 size: OpSize::Word,
                 dest: mod_rm,
               }
@@ -1094,11 +1101,11 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
 #[test]
 fn test_parse_add() {
   {
-    let input: Vec<u8> = vec![0x00, 0x00];
+    let input: Vec<u8> = vec![0x00, 0xC0];
     assert_eq!(
       parse_op(&mut input.into_iter()),
       Some(Op::Binary {
-        type: OpBinaryOp::Add,
+        op: OpBinaryOp::Add,
         size: OpSize::Byte,
         src: OpTarget::Register(OpRegister::Al),
         dest: OpTarget::Register(OpRegister::Al),
@@ -1110,10 +1117,22 @@ fn test_parse_add() {
     assert_eq!(
       parse_op(&mut input.into_iter()),
       Some(Op::Unary {
-        type: OpUnaryOp::Push,
+        op: OpUnaryOp::Push,
         size: OpSize::Word,
         dest: OpTarget::SegmentRegister(OpSegmentRegister::Es),
       }),
     );
+  }
+  {
+    let input: Vec<u8> = vec![0x31, 0x80, 0xab, 0xcd];
+    println!("{:#?}", parse_op(&mut input.into_iter()));
+  }
+  {
+    let input: Vec<u8> = vec![0x80, 0x80, 0xab, 0xcd, 0x25];
+    println!("{:#?}", parse_op(&mut input.into_iter()));
+  }
+  {
+    let input: Vec<u8> = vec![0x81, 0xc3, 0x00, 0xf0];
+    println!("{:#?}", parse_op(&mut input.into_iter()));
   }
 }
