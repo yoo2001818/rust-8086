@@ -14,6 +14,30 @@ impl CPU {
   pub fn next() -> () {
 
   }
+  pub fn get_target_u16(&self, target: &op::OpTarget) -> u16 {
+    match target {
+      op::OpTarget::Register(reg) => {
+        match reg {
+          op::OpRegister::Ax => self.register.ax,
+        }
+      },
+      op::OpTarget::SegmentRegister(seg) => {
+
+      },
+      op::OpTarget::Address(base, offset) => {
+
+      },
+      op::OpTarget::Direct(offset) => {
+
+      },
+      op::OpTarget::ImmWord(value) => {
+
+      },
+      op::OpTarget::ImmByte(value) => {
+
+      },
+    }
+  }
 }
 
 impl Iterator for CPU {
