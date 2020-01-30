@@ -1,19 +1,19 @@
 #[derive(Debug)]
 pub struct Register {
-  ax: u16,
-  bx: u16,
-  cx: u16,
-  dx: u16,
-  ip: u16,
-  sp: u16,
-  bp: u16,
-  si: u16,
-  di: u16,
-  cs: u16,
-  ss: u16,
-  ds: u16,
-  es: u16,
-  flags: u16,
+  pub ax: u16,
+  pub bx: u16,
+  pub cx: u16,
+  pub dx: u16,
+  pub ip: u16,
+  pub sp: u16,
+  pub bp: u16,
+  pub si: u16,
+  pub di: u16,
+  pub cs: u16,
+  pub ss: u16,
+  pub ds: u16,
+  pub es: u16,
+  pub flags: u16,
 }
 
 impl Register {
