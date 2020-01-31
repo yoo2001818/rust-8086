@@ -36,3 +36,33 @@ impl Register {
     }
   }
 }
+
+#[derive(PartialEq, Copy, Clone)]
+#[derive(Debug)]
+pub enum OpRegister {
+  Ax,
+  Cx,
+  Dx,
+  Bx,
+  Sp,
+  Bp,
+  Si,
+  Di,
+  Al,
+  Cl,
+  Dl,
+  Bl,
+  Ah,
+  Ch,
+  Dh,
+  Bh,
+}
+
+#[derive(PartialEq, Copy, Clone)]
+#[derive(Debug)]
+pub enum OpSegmentRegister {
+  Es,
+  Cs,
+  Ss,
+  Ds,
+}

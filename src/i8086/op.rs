@@ -1,24 +1,7 @@
-
-#[derive(PartialEq, Copy, Clone)]
-#[derive(Debug)]
-pub enum OpRegister {
-  Ax,
-  Cx,
-  Dx,
-  Bx,
-  Sp,
-  Bp,
-  Si,
-  Di,
-  Al,
-  Cl,
-  Dl,
-  Bl,
-  Ah,
-  Ch,
-  Dh,
-  Bh,
-}
+use super::register::OpRegister;
+use super::register::OpSegmentRegister;
+use super::target::OpAddressType;
+use super::target::OpTarget;
 
 impl OpRegister {
   fn from_value(size: OpSize, value: u8) -> Option<OpRegister> {
@@ -52,15 +35,6 @@ impl OpRegister {
   }
 }
 
-#[derive(PartialEq, Copy, Clone)]
-#[derive(Debug)]
-pub enum OpSegmentRegister {
-  Es,
-  Cs,
-  Ss,
-  Ds,
-}
-
 impl OpSegmentRegister {
   fn from_value(value: u8) -> Option<OpSegmentRegister> {
     Some(match value {
@@ -74,19 +48,6 @@ impl OpSegmentRegister {
   fn to_value(&self) -> u8 {
     *self as u8
   }
-}
-
-#[derive(PartialEq, Copy, Clone)]
-#[derive(Debug)]
-pub enum OpAddressType {
-  BxSi,
-  BxDi,
-  BpSi,
-  BpDi,
-  Si,
-  Di,
-  Bp,
-  Bx,
 }
 
 impl OpAddressType {
@@ -106,17 +67,6 @@ impl OpAddressType {
   fn to_value(&self) -> u8 {
     *self as u8
   }
-}
-
-#[derive(PartialEq)]
-#[derive(Debug)]
-pub enum OpTarget {
-  Register(OpRegister),
-  SegmentRegister(OpSegmentRegister),
-  Address(OpAddressType, u16),
-  Direct(u16),
-  ImmWord(u16),
-  ImmByte(u8),
 }
 
 #[derive(PartialEq, Copy, Clone)]
