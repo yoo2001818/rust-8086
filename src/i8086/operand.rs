@@ -18,7 +18,7 @@ pub enum AddressType {
 
 #[derive(PartialEq)]
 #[derive(Debug)]
-pub enum AddressOperand {
+pub enum Operand {
   Register(RegisterType),
   SegmentRegister(SegmentRegisterType),
   Address(AddressType, u16),
@@ -41,25 +41,59 @@ impl CPU {
     };
     base_offset + offset
   }
-  pub fn get_operand_u16(&self, operand: &AddressOperand) -> u16 {
+  pub fn get_segment_addr(&self) -> usize {
+    (self.register.ds as usize) << 4
+  }
+  pub fn get_operand_u16(&self, operand: &Operand) -> u16 {
     match operand {
-      AddressOperand::Register(reg) => self.register.get_u16(reg),
-      AddressOperand::SegmentRegister(reg) => self.register.get_seg(reg),
-      AddressOperand::Address(addr, offset) =>
-        self.memory.read_u16(self.get_offset(addr, *offset)),
-      AddressOperand::Direct(offset) =>
-        self.memory.read_u16(offset),
-      AddressOperand::ImmWord(value) => *value,
-      AddressOperand::ImmByte(value) => *value as i16 as u16,
+      Operand::Register(reg) => self.register.get_u16(reg),
+      Operand::SegmentRegister(reg) => self.register.get_seg(reg),
+      Operand::Address(addr, offset) => self.memory.read_u16(
+        (self.get_offset(addr, *offset) as usize) +
+        self.get_segment_addr()),
+      Operand::Direct(offset) => self.memory.read_u16(
+        (*offset as usize) +
+        self.get_segment_addr()),
+      Operand::ImmWord(value) => *value,
+      Operand::ImmByte(value) => *value as i16 as u16,
     }
   }
-  pub fn set_operand_u16(&mut self, operand: &AddressOperand, value: u16) -> () {
-
+  pub fn set_operand_u16(&mut self, operand: &Operand, value: u16) -> () {
+    match operand {
+      Operand::Register(reg) => self.register.set_u16(reg, value),
+      Operand::SegmentRegister(reg) => self.register.set_seg(reg, value),
+      Operand::Address(addr, offset) => self.memory.write_u16(
+        (self.get_offset(addr, *offset) as usize) +
+        self.get_segment_addr(), value),
+      Operand::Direct(offset) => self.memory.write_u16(
+        (*offset as usize) +
+        self.get_segment_addr(), value),
+      _ => (),
+    }
   }
-  pub fn get_operand_u8(&self, operand: &AddressOperand) -> u8 {
-
+  pub fn get_operand_u8(&self, operand: &Operand) -> u8 {
+    match operand {
+      Operand::Register(reg) => self.register.get_u8(reg),
+      Operand::Address(addr, offset) => self.memory.read_u8(
+        (self.get_offset(addr, *offset) as usize) +
+        self.get_segment_addr()),
+      Operand::Direct(offset) => self.memory.read_u8(
+        (*offset as usize) +
+        self.get_segment_addr()),
+      Operand::ImmByte(value) => *value,
+      _ => 0,
+    }
   }
-  pub fn set_operand_u8(&mut self, operand: &AddressOperand, value: u8) -> () {
-
+  pub fn set_operand_u8(&mut self, operand: &Operand, value: u8) -> () {
+    match operand {
+      Operand::Register(reg) => self.register.set_u8(reg, value),
+      Operand::Address(addr, offset) => self.memory.write_u8(
+        (self.get_offset(addr, *offset) as usize) +
+        self.get_segment_addr(), value),
+      Operand::Direct(offset) => self.memory.write_u8(
+        (*offset as usize) +
+        self.get_segment_addr(), value),
+      _ => (),
+    }
   }
 }
