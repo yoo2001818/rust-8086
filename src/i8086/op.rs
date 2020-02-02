@@ -218,26 +218,10 @@ pub enum OpCondJmpOp {
   Loop,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Copy, Clone)]
 #[derive(Debug)]
-pub enum Op {
-  Binary { op: OpBinaryOp, size: OpSize, src: Operand, dest: Operand },
-  Unary { op: OpUnaryOp, size: OpSize, dest: Operand },
-  Shift {
-    op: OpShiftOp,
-    shift_type: OpShiftType,
-    size: OpSize,
-    dest: Operand,
-  },
-  CondJmp { op: OpCondJmpOp, offset: u8 },
-  InFixed(OpSize),
-  InVariable(OpSize, u8),
-  OutFixed(OpSize),
-  OutVariable(OpSize, u8),
+pub enum OpNullaryOp {
   Xlat,
-  Lea(RegisterType, Operand),
-  Lds(RegisterType, Operand),
-  Les(RegisterType, Operand),
   Lahf,
   Sahf,
   Pushf,
@@ -250,20 +234,8 @@ pub enum Op {
   Aad,
   Cbw,
   Cwd,
-  Movs(OpSize),
-  Cmps(OpSize),
-  Scas(OpSize),
-  Lods(OpSize),
-  Stos(OpSize),
   Rep,
   Repz,
-  Call(OpCallType),
-  Jmp(OpCallType),
-  RetWithin,
-  RetWithinImm(u16),
-  RetInter,
-  RetInterImm(u16),
-  Int(u8),
   Into,
   Iret,
   Clc,
@@ -275,8 +247,42 @@ pub enum Op {
   Sti,
   Hlt,
   Wait,
-  Esc(u8, Operand),
   Lock,
+}
+
+#[derive(PartialEq)]
+#[derive(Debug)]
+pub enum Op {
+  Binary { op: OpBinaryOp, size: OpSize, src: Operand, dest: Operand },
+  Unary { op: OpUnaryOp, size: OpSize, dest: Operand },
+  Nullary(OpNullaryOp),
+  Shift {
+    op: OpShiftOp,
+    shift_type: OpShiftType,
+    size: OpSize,
+    dest: Operand,
+  },
+  CondJmp { op: OpCondJmpOp, offset: u8 },
+  InFixed(OpSize),
+  InVariable(OpSize, u8),
+  OutFixed(OpSize),
+  OutVariable(OpSize, u8),
+  Lea(RegisterType, Operand),
+  Lds(RegisterType, Operand),
+  Les(RegisterType, Operand),
+  Movs(OpSize),
+  Cmps(OpSize),
+  Scas(OpSize),
+  Lods(OpSize),
+  Stos(OpSize),
+  Call(OpCallType),
+  Jmp(OpCallType),
+  RetWithin,
+  RetWithinImm(u16),
+  RetInter,
+  RetInterImm(u16),
+  Int(u8),
+  Esc(u8, Operand),
   Segment(SegmentRegisterType),
 }
 
@@ -430,7 +436,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       match first_octet {
         0..=5 => parse_binary_group_op(OpBinaryOp::And, first, iter)?,
         6 => Op::Segment(SegmentRegisterType::Es),
-        7 => Op::Daa,
+        7 => Op::Nullary(OpNullaryOp::Daa),
         _ => return None,
       }
     },
@@ -438,7 +444,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       match first_octet {
         0..=5 => parse_binary_group_op(OpBinaryOp::Sub, first, iter)?,
         6 => Op::Segment(SegmentRegisterType::Cs),
-        7 => Op::Das,
+        7 => Op::Nullary(OpNullaryOp::Das),
         _ => return None,
       }
     },
@@ -446,7 +452,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       match first_octet {
         0..=5 => parse_binary_group_op(OpBinaryOp::Xor, first, iter)?,
         6 => Op::Segment(SegmentRegisterType::Ss),
-        7 => Op::Aaa,
+        7 => Op::Nullary(OpNullaryOp::Aaa),
         _ => return None,
       }
     },
@@ -454,7 +460,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       match first_octet {
         0..=5 => parse_binary_group_op(OpBinaryOp::Cmp, first, iter)?,
         6 => Op::Segment(SegmentRegisterType::Ds),
-        7 => Op::Aas,
+        7 => Op::Nullary(OpNullaryOp::Aas),
         _ => return None,
       }
     },
@@ -666,14 +672,14 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
     },
     0x98 => {
       match first_octet {
-        0 => Op::Cbw,
-        1 => Op::Cwd,
+        0 => Op::Nullary(OpNullaryOp::Cbw),
+        1 => Op::Nullary(OpNullaryOp::Cwd),
         2 => Op::Call(OpCallType::InterDirect(iter_next_u16(iter)?, iter_next_u16(iter)?)),
-        3 => Op::Wait,
-        4 => Op::Pushf,
-        5 => Op::Popf,
-        6 => Op::Sahf,
-        7 => Op::Lahf,
+        3 => Op::Nullary(OpNullaryOp::Wait),
+        4 => Op::Nullary(OpNullaryOp::Pushf),
+        5 => Op::Nullary(OpNullaryOp::Popf),
+        6 => Op::Nullary(OpNullaryOp::Sahf),
+        7 => Op::Nullary(OpNullaryOp::Lahf),
         _ => return None,
       }
     },
@@ -830,8 +836,8 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         3 => Op::RetInter,
         4 => Op::Int(3),
         5 => Op::Int(iter.next()?),
-        6 => Op::Into,
-        7 => Op::Iret,
+        6 => Op::Nullary(OpNullaryOp::Into),
+        7 => Op::Nullary(OpNullaryOp::Iret),
         _ => return None,
       }
     },
@@ -870,7 +876,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         4 => {
           let second = iter.next()?;
           if second == 0x0A {
-            Op::Aam
+            Op::Nullary(OpNullaryOp::Aam)
           } else {
             return None;
           }
@@ -878,13 +884,13 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         5 => {
           let second = iter.next()?;
           if second == 0x0A {
-            Op::Aad
+            Op::Nullary(OpNullaryOp::Aad)
           } else {
             return None;
           }
         }
         6 => return None,
-        7 => Op::Xlat,
+        7 => Op::Nullary(OpNullaryOp::Xlat),
         _ => return None,
       }
     },
@@ -952,12 +958,12 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       // F6 - op R/M8
       // F7 - op R/M16
       match first_octet {
-        0 => Op::Lock,
+        0 => Op::Nullary(OpNullaryOp::Lock),
         1 => return None,
-        2 => Op::Repz,
-        3 => Op::Rep,
-        4 => Op::Hlt,
-        5 => Op::Cmc,
+        2 => Op::Nullary(OpNullaryOp::Repz),
+        3 => Op::Nullary(OpNullaryOp::Rep),
+        4 => Op::Nullary(OpNullaryOp::Hlt),
+        5 => Op::Nullary(OpNullaryOp::Cmc),
         6..=7 => {
           let second = iter.next()?;
           let size = match first & 0x01 {
@@ -1005,12 +1011,12 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       // INC, DEC, CALL, CALL, JMP, JMP, Push, -
       // FF - op MEM16
       match first_octet {
-        0 => Op::Clc,
-        1 => Op::Stc,
-        2 => Op::Cli,
-        3 => Op::Sti,
-        4 => Op::Cld,
-        5 => Op::Std,
+        0 => Op::Nullary(OpNullaryOp::Clc),
+        1 => Op::Nullary(OpNullaryOp::Stc),
+        2 => Op::Nullary(OpNullaryOp::Cli),
+        3 => Op::Nullary(OpNullaryOp::Sti),
+        4 => Op::Nullary(OpNullaryOp::Cld),
+        5 => Op::Nullary(OpNullaryOp::Std),
         6 => {
           let second = iter.next()?;
           let mod_rm = parse_mod_rm(OpSize::Byte, second, iter)?;

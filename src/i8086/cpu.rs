@@ -45,12 +45,11 @@ impl<'cpu> Iterator for CPUIterator<'cpu> {
   }
 }
 
+#[cfg(test)]
 mod tests {
-  use crate::mem::LinearMemory;
-  use crate::mem::Memory;
+  use crate::mem::*;
   use super::CPU;
-  use super::super::op::Op;
-  use super::super::op::OpCallType;
+  use super::super::op::*;
   #[test]
   fn cpu_init() {
     let mut mem = LinearMemory::new(0xFFFFF);
