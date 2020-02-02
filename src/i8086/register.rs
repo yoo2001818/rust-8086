@@ -28,7 +28,7 @@ impl Register {
       bp: 0,
       si: 0,
       di: 0,
-      cs: 0,
+      cs: 0xffff,
       ss: 0,
       ds: 0,
       es: 0,
