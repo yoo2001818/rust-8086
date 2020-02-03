@@ -39,7 +39,7 @@ impl<'cpu> Iterator for CPUIterator<'cpu> {
   fn next(&mut self) -> Option<u8> {
     let addr = self.cpu.register.ip as usize +
       ((self.cpu.register.cs as usize) << 4);
-    let value = self.cpu.memory.read_u8(addr);
+    let value = self.cpu.memory.read_val::<u8>(addr);
     self.cpu.register.ip += 1;
     Some(value)
   }
@@ -53,9 +53,9 @@ mod tests {
   #[test]
   fn cpu_init() {
     let mut mem = LinearMemory::new(0xFFFFF);
-    mem.write_u8(0xFFFF0, 0b11101010);
-    mem.write_u16(0xFFFF1, 0x0000);
-    mem.write_u16(0xFFFF3, 0xf000);
+    mem.write_val(0xFFFF0, 0b11101010 as u8);
+    mem.write_val(0xFFFF1, 0x0000 as u16);
+    mem.write_val(0xFFFF3, 0xf000 as u16);
     let mut cpu = CPU::new(mem);
     assert_eq!(
       cpu.next_op(),

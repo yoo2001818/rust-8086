@@ -1,7 +1,8 @@
-use super::register::RegisterType;
-use super::register::SegmentRegisterType;
+use std::convert::From;
+use std::ops::*;
 use super::cpu::CPU;
-use crate::mem::Memory;
+use super::register::*;
+use crate::mem::*;
 
 #[derive(PartialEq, Copy, Clone)]
 #[derive(Debug)]
@@ -44,56 +45,54 @@ impl CPU {
   pub fn get_segment_addr(&self) -> usize {
     (self.register.ds as usize) << 4
   }
-  pub fn get_operand_u16(&self, operand: &Operand) -> u16 {
+  pub fn get_operand<T>(&self, operand: &Operand) -> T
+    where T: OperandValue
+  {
     match operand {
-      Operand::Register(reg) => self.register.get_u16(reg),
-      Operand::SegmentRegister(reg) => self.register.get_seg(reg),
-      Operand::Address(addr, offset) => self.memory.read_u16(
+      Operand::Register(reg) => T::read_reg(&self.register, reg),
+      Operand::SegmentRegister(reg) => T::read_seg(&self.register, reg),
+      Operand::Address(addr, offset) => T::read_mem(
+        &self.memory,
         (self.get_offset(addr, *offset) as usize) +
         self.get_segment_addr()),
-      Operand::Direct(offset) => self.memory.read_u16(
+      Operand::Direct(offset) => T::read_mem(
+        &self.memory,
         (*offset as usize) +
         self.get_segment_addr()),
-      Operand::ImmWord(value) => *value,
-      Operand::ImmByte(value) => *value as i16 as u16,
+      Operand::ImmWord(value) => T::from_u16(*value),
+      Operand::ImmByte(value) => T::from_u8(*value),
     }
   }
-  pub fn set_operand_u16(&mut self, operand: &Operand, value: u16) -> () {
+  pub fn set_operand<T>(&self, operand: &Operand, value: T) -> ()
+    where T: OperandValue
+  {
     match operand {
-      Operand::Register(reg) => self.register.set_u16(reg, value),
-      Operand::SegmentRegister(reg) => self.register.set_seg(reg, value),
-      Operand::Address(addr, offset) => self.memory.write_u16(
+      Operand::Register(reg) => T::write_reg(&mut self.register, reg, value),
+      Operand::SegmentRegister(reg) => T::write_seg(&mut self.register, reg, value),
+      Operand::Address(addr, offset) => T::write_mem(
+        &mut self.memory,
         (self.get_offset(addr, *offset) as usize) +
         self.get_segment_addr(), value),
-      Operand::Direct(offset) => self.memory.write_u16(
-        (*offset as usize) +
-        self.get_segment_addr(), value),
-      _ => (),
-    }
-  }
-  pub fn get_operand_u8(&self, operand: &Operand) -> u8 {
-    match operand {
-      Operand::Register(reg) => self.register.get_u8(reg),
-      Operand::Address(addr, offset) => self.memory.read_u8(
-        (self.get_offset(addr, *offset) as usize) +
-        self.get_segment_addr()),
-      Operand::Direct(offset) => self.memory.read_u8(
-        (*offset as usize) +
-        self.get_segment_addr()),
-      Operand::ImmByte(value) => *value,
-      _ => 0,
-    }
-  }
-  pub fn set_operand_u8(&mut self, operand: &Operand, value: u8) -> () {
-    match operand {
-      Operand::Register(reg) => self.register.set_u8(reg, value),
-      Operand::Address(addr, offset) => self.memory.write_u8(
-        (self.get_offset(addr, *offset) as usize) +
-        self.get_segment_addr(), value),
-      Operand::Direct(offset) => self.memory.write_u8(
+      Operand::Direct(offset) => T::write_mem(
+        &mut self.memory,
         (*offset as usize) +
         self.get_segment_addr(), value),
       _ => (),
     }
   }
+}
+
+pub trait OperandValue: MemoryValue + RegisterValue + Add<Output=Self> + Sized {
+  fn from_u8(value: u8) -> Self;
+  fn from_u16(value: u16) -> Self;
+}
+
+impl OperandValue for u8 {
+  fn from_u8(value: u8) -> u8 { value }
+  fn from_u16(value: u16) -> u8 { value as u8 }
+}
+
+impl OperandValue for u16 {
+  fn from_u8(value: u8) -> u16 { value as i8 as i16 as u16 }
+  fn from_u16(value: u16) -> u16 { value }
 }

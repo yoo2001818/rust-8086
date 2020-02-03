@@ -2,7 +2,27 @@ use super::cpu::CPU;
 use super::operand::*;
 use super::op::*;
 
-fn exec_binary(
+fn exec_binary<T: OperandValue>(
+  cpu: &mut CPU,
+  op: &OpBinaryOp,
+  src: &Operand,
+  dest: &Operand,
+) -> () {
+  let src_val: T = cpu.get_operand(src);
+  let mut dest_val: T = cpu.get_operand(dest);
+  match op {
+    OpBinaryOp::Adc => {
+      dest_val = src_val + dest_val;
+    },
+    OpBinaryOp::Add => {
+      dest_val = src_val + dest_val;
+    },
+    _ => (),
+  }
+  cpu.set_operand(dest, dest_val);
+}
+
+fn exec_binary_sized(
   cpu: &mut CPU,
   op: &OpBinaryOp,
   size: &OpSize,

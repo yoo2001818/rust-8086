@@ -35,74 +35,6 @@ impl Register {
       flags: 0,
     }
   }
-  pub fn get_u16(&self, reg: &RegisterType) -> u16 {
-    match reg {
-      RegisterType::Ax => self.ax,
-      RegisterType::Cx => self.cx,
-      RegisterType::Dx => self.dx,
-      RegisterType::Bx => self.bx,
-      RegisterType::Sp => self.sp,
-      RegisterType::Bp => self.bp,
-      RegisterType::Si => self.si,
-      RegisterType::Di => self.di,
-      _ => 0,
-    }
-  }
-  pub fn set_u16(&mut self, reg: &RegisterType, value: u16) -> () {
-    match reg {
-      RegisterType::Ax => self.ax = value,
-      RegisterType::Cx => self.cx = value,
-      RegisterType::Dx => self.dx = value,
-      RegisterType::Bx => self.bx = value,
-      RegisterType::Sp => self.sp = value,
-      RegisterType::Bp => self.bp = value,
-      RegisterType::Si => self.si = value,
-      RegisterType::Di => self.di = value,
-      _ => (),
-    }
-  }
-  pub fn get_u8(&self, reg: &RegisterType) -> u8 {
-    match reg {
-      RegisterType::Al => (self.ax & 0xff) as u8,
-      RegisterType::Cl => (self.cx & 0xff) as u8,
-      RegisterType::Dl => (self.dx & 0xff) as u8,
-      RegisterType::Bl => (self.bx & 0xff) as u8,
-      RegisterType::Ah => ((self.ax >> 8) & 0xff) as u8,
-      RegisterType::Ch => ((self.cx >> 8) & 0xff) as u8,
-      RegisterType::Dh => ((self.dx >> 8) & 0xff) as u8,
-      RegisterType::Bh => ((self.bx >> 8) & 0xff) as u8,
-      _ => 0,
-    }
-  }
-  pub fn set_u8(&mut self, reg: &RegisterType, value: u8) -> () {
-    match reg {
-      RegisterType::Al => self.ax = (self.ax & !0xff) | value as u16,
-      RegisterType::Cl => self.cx = (self.cx & !0xff) | value as u16,
-      RegisterType::Dl => self.dx = (self.dx & !0xff) | value as u16,
-      RegisterType::Bl => self.bx = (self.bx & !0xff) | value as u16,
-      RegisterType::Ah => self.ax = (self.ax & !0xff00) | ((value as u16) << 8),
-      RegisterType::Ch => self.cx = (self.cx & !0xff00) | ((value as u16) << 8),
-      RegisterType::Dh => self.dx = (self.dx & !0xff00) | ((value as u16) << 8),
-      RegisterType::Bh => self.bx = (self.bx & !0xff00) | ((value as u16) << 8),
-      _ => (),
-    }
-  }
-  pub fn get_seg(&self, reg: &SegmentRegisterType) -> u16 {
-    match reg {
-      SegmentRegisterType::Es => self.es,
-      SegmentRegisterType::Cs => self.cs,
-      SegmentRegisterType::Ss => self.ss,
-      SegmentRegisterType::Ds => self.ds,
-    }
-  }
-  pub fn set_seg(&mut self, reg: &SegmentRegisterType, value: u16) -> () {
-    match reg {
-      SegmentRegisterType::Es => self.es = value,
-      SegmentRegisterType::Cs => self.cs = value,
-      SegmentRegisterType::Ss => self.ss = value,
-      SegmentRegisterType::Ds => self.ds = value,
-    }
-  }
 }
 
 #[derive(PartialEq, Copy, Clone)]
@@ -133,4 +65,90 @@ pub enum SegmentRegisterType {
   Cs,
   Ss,
   Ds,
+}
+
+pub trait RegisterValue {
+  fn read_reg(store: &Register, register: &RegisterType) -> Self;
+  fn write_reg(store: &mut Register, register: &RegisterType, value: Self) -> ();
+  fn read_seg(store: &Register, register: &SegmentRegisterType) -> Self;
+  fn write_seg(store: &mut Register, register: &SegmentRegisterType, value: Self) -> ();
+}
+
+impl RegisterValue for u8 {
+  fn read_reg(store: &Register, register: &RegisterType) -> u8 {
+    match register {
+      RegisterType::Al => (store.ax & 0xff) as u8,
+      RegisterType::Cl => (store.cx & 0xff) as u8,
+      RegisterType::Dl => (store.dx & 0xff) as u8,
+      RegisterType::Bl => (store.bx & 0xff) as u8,
+      RegisterType::Ah => ((store.ax >> 8) & 0xff) as u8,
+      RegisterType::Ch => ((store.cx >> 8) & 0xff) as u8,
+      RegisterType::Dh => ((store.dx >> 8) & 0xff) as u8,
+      RegisterType::Bh => ((store.bx >> 8) & 0xff) as u8,
+      _ => 0,
+    }
+  }
+  fn write_reg(store: &mut Register, register: &RegisterType, value: u8) -> () {
+    match register {
+      RegisterType::Al => store.ax = (store.ax & !0xff) | value as u16,
+      RegisterType::Cl => store.cx = (store.cx & !0xff) | value as u16,
+      RegisterType::Dl => store.dx = (store.dx & !0xff) | value as u16,
+      RegisterType::Bl => store.bx = (store.bx & !0xff) | value as u16,
+      RegisterType::Ah => store.ax = (store.ax & !0xff00) | ((value as u16) << 8),
+      RegisterType::Ch => store.cx = (store.cx & !0xff00) | ((value as u16) << 8),
+      RegisterType::Dh => store.dx = (store.dx & !0xff00) | ((value as u16) << 8),
+      RegisterType::Bh => store.bx = (store.bx & !0xff00) | ((value as u16) << 8),
+      _ => (),
+    }
+  }
+  fn read_seg(store: &Register, register: &SegmentRegisterType) -> u8 {
+    0
+  }
+  fn write_seg(store: &mut Register, register: &SegmentRegisterType, value: u8) -> () {
+  }
+}
+
+impl RegisterValue for u16 {
+  fn read_reg(store: &Register, register: &RegisterType) -> u16 {
+    match register {
+      RegisterType::Ax => store.ax,
+      RegisterType::Cx => store.cx,
+      RegisterType::Dx => store.dx,
+      RegisterType::Bx => store.bx,
+      RegisterType::Sp => store.sp,
+      RegisterType::Bp => store.bp,
+      RegisterType::Si => store.si,
+      RegisterType::Di => store.di,
+      _ => 0,
+    }
+  }
+  fn write_reg(store: &mut Register, register: &RegisterType, value: u16) -> () {
+    match register {
+      RegisterType::Ax => store.ax = value,
+      RegisterType::Cx => store.cx = value,
+      RegisterType::Dx => store.dx = value,
+      RegisterType::Bx => store.bx = value,
+      RegisterType::Sp => store.sp = value,
+      RegisterType::Bp => store.bp = value,
+      RegisterType::Si => store.si = value,
+      RegisterType::Di => store.di = value,
+      _ => (),
+    }
+  }
+  fn read_seg(store: &Register, register: &SegmentRegisterType) -> u16 {
+    match register {
+      SegmentRegisterType::Es => store.es,
+      SegmentRegisterType::Cs => store.cs,
+      SegmentRegisterType::Ss => store.ss,
+      SegmentRegisterType::Ds => store.ds,
+    }
+  }
+  fn write_seg(store: &mut Register, register: &SegmentRegisterType, value: u16) -> () {
+    match register {
+      SegmentRegisterType::Es => store.es = value,
+      SegmentRegisterType::Cs => store.cs = value,
+      SegmentRegisterType::Ss => store.ss = value,
+      SegmentRegisterType::Ds => store.ds = value,
+    }
+  }
 }
