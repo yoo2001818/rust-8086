@@ -9,8 +9,18 @@ fn exec_binary(
   src: &Operand,
   dest: &Operand,
 ) -> () {
-  cpu.get_operand_u16(src);
-  cpu.get_operand_u16(dest);
+  let src_val = cpu.get_operand_u16(src);
+  let mut dest_val = cpu.get_operand_u16(dest);
+  match op {
+    OpBinaryOp::Adc => {
+      dest_val = src_val + dest_val;
+    },
+    OpBinaryOp::Add => {
+      dest_val = src_val + dest_val;
+    },
+    _ => (),
+  }
+  cpu.set_operand_u16(dest, dest_val);
 }
 
 fn exec_unary(
