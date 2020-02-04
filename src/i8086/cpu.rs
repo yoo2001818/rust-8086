@@ -1,5 +1,6 @@
 use crate::mem::LinearMemory;
 use crate::mem::Memory;
+use crate::mem::MemoryValue;
 use super::register::Register;
 use super::op::Op;
 use super::op::parse_op;
@@ -39,7 +40,7 @@ impl<'cpu> Iterator for CPUIterator<'cpu> {
   fn next(&mut self) -> Option<u8> {
     let addr = self.cpu.register.ip as usize +
       ((self.cpu.register.cs as usize) << 4);
-    let value = self.cpu.memory.read_val::<u8>(addr);
+    let value = u8::read_mem(&self.cpu.memory, addr);
     self.cpu.register.ip += 1;
     Some(value)
   }
@@ -53,9 +54,9 @@ mod tests {
   #[test]
   fn cpu_init() {
     let mut mem = LinearMemory::new(0xFFFFF);
-    mem.write_val(0xFFFF0, 0b11101010 as u8);
-    mem.write_val(0xFFFF1, 0x0000 as u16);
-    mem.write_val(0xFFFF3, 0xf000 as u16);
+    u8::write_mem(&mut mem, 0xFFFF0, 0b11101010);
+    u16::write_mem(&mut mem, 0xFFFF1, 0x0000);
+    u16::write_mem(&mut mem, 0xFFFF3, 0xf000);
     let mut cpu = CPU::new(mem);
     assert_eq!(
       cpu.next_op(),

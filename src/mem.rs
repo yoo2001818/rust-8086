@@ -8,7 +8,7 @@ pub struct LinearMemory {
 }
 
 impl LinearMemory {
-  fn new(size: usize) -> LinearMemory {
+  pub fn new(size: usize) -> LinearMemory {
     let words = vec![0; size];
     LinearMemory { words }
   }
