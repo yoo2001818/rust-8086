@@ -1,4 +1,3 @@
-use std::convert::From;
 use std::ops::*;
 use super::cpu::CPU;
 use super::register::*;
@@ -27,6 +26,9 @@ pub enum Operand<T: RegisterType> {
   ImmByte(u8),
 }
 
+pub type OperandWord = Operand<RegisterWordType>;
+pub type OperandByte = Operand<RegisterByteType>;
+
 impl CPU {
   pub fn get_offset(&self, addr_type: &AddressType, offset: u16) -> u16 {
     let base_offset = match addr_type {
@@ -44,12 +46,11 @@ impl CPU {
   pub fn get_segment_addr(&self) -> usize {
     (self.register.ds as usize) << 4
   }
-  pub fn get_operand<T>(&self, operand: &Operand) -> T
-    where T: OperandValue
+  pub fn get_operand<T, R>(&self, operand: &Operand<R>) -> T
+    where T: OperandValue<R>, R: RegisterType
   {
     match operand {
       Operand::Register(reg) => T::read_reg(&self.register, reg),
-      Operand::SegmentRegister(reg) => T::read_seg(&self.register, reg),
       Operand::Address(addr, offset) => T::read_mem(
         &self.memory,
         (self.get_offset(addr, *offset) as usize) +
@@ -62,36 +63,36 @@ impl CPU {
       Operand::ImmByte(value) => T::from_u8(*value),
     }
   }
-  pub fn set_operand<T>(&self, operand: &Operand, value: T) -> ()
-    where T: OperandValue
+  pub fn set_operand<T, R>(&mut self, operand: &Operand<R>, value: T) -> ()
+    where T: OperandValue<R>, R: RegisterType
   {
     match operand {
       Operand::Register(reg) => T::write_reg(&mut self.register, reg, value),
-      Operand::SegmentRegister(reg) => T::write_seg(&mut self.register, reg, value),
-      Operand::Address(addr, offset) => T::write_mem(
-        &mut self.memory,
-        (self.get_offset(addr, *offset) as usize) +
-        self.get_segment_addr(), value),
-      Operand::Direct(offset) => T::write_mem(
-        &mut self.memory,
-        (*offset as usize) +
-        self.get_segment_addr(), value),
+      Operand::Address(addr, offset) => {
+        let address = (self.get_offset(addr, *offset) as usize) +
+          self.get_segment_addr();
+        T::write_mem(&mut self.memory, address, value);
+      }
+      Operand::Direct(offset) => {
+        let address = (*offset as usize) + self.get_segment_addr();
+        T::write_mem(&mut self.memory, address, value);
+      }
       _ => (),
     }
   }
 }
 
-pub trait OperandValue: MemoryValue + RegisterValue + Add<Output=Self> + Sized {
+pub trait OperandValue<R>: MemoryValue + RegisterValue<R> + Add<Output=Self> + Sized {
   fn from_u8(value: u8) -> Self;
   fn from_u16(value: u16) -> Self;
 }
 
-impl OperandValue for u8 {
+impl OperandValue<RegisterByteType> for u8 {
   fn from_u8(value: u8) -> u8 { value }
   fn from_u16(value: u16) -> u8 { value as u8 }
 }
 
-impl OperandValue for u16 {
+impl OperandValue<RegisterWordType> for u16 {
   fn from_u8(value: u8) -> u16 { value as i8 as i16 as u16 }
   fn from_u16(value: u16) -> u16 { value }
 }

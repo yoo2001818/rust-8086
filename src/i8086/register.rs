@@ -110,6 +110,7 @@ impl RegisterType for RegisterWordType {
 }
 
 impl RegisterType for RegisterByteType {
+  type Value = u8;
   fn read_reg(store: &Register, register: &RegisterByteType) -> u8 {
     match register {
       RegisterByteType::Al => (store.ax & 0xff) as u8,
@@ -135,5 +136,19 @@ impl RegisterType for RegisterByteType {
       RegisterByteType::Bh => store.bx = (store.bx & !0xff00) | ((value as u16) << 8),
       _ => (),
     }
+  }
+}
+
+pub trait RegisterValue<T> {
+  fn read_reg(store: &Register, register: &T) -> Self;
+  fn write_reg(store: &mut Register, register: &T, value: Self) -> ();
+}
+
+impl<T, V> RegisterValue<T> for V where T: RegisterType<Value = V> {
+  fn read_reg(store: &Register, register: &T) -> V {
+    T::read_reg(store, register)
+  }
+  fn write_reg(store: &mut Register, register: &T, value: V) -> () {
+    T::write_reg(store, register, value)
   }
 }
