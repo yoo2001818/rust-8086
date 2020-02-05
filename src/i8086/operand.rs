@@ -19,9 +19,8 @@ pub enum AddressType {
 
 #[derive(PartialEq)]
 #[derive(Debug)]
-pub enum Operand {
-  Register(RegisterType),
-  SegmentRegister(SegmentRegisterType),
+pub enum Operand<T: RegisterType> {
+  Register(T),
   Address(AddressType, u16),
   Direct(u16),
   ImmWord(u16),

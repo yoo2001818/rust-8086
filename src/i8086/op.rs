@@ -1,52 +1,46 @@
-use super::register::RegisterType;
-use super::register::SegmentRegisterType;
+use super::register::RegisterWordType;
+use super::register::RegisterByteType;
 use super::operand::AddressType;
 use super::operand::Operand;
 
-impl RegisterType {
-  fn from_value(size: OpSize, value: u8) -> Option<RegisterType> {
-    Some(match size {
-      OpSize::Byte => match value {
-        0 => RegisterType::Al,
-        1 => RegisterType::Cl,
-        2 => RegisterType::Dl,
-        3 => RegisterType::Bl,
-        4 => RegisterType::Ah,
-        5 => RegisterType::Ch,
-        6 => RegisterType::Dh,
-        7 => RegisterType::Bh,
-        _ => return None,
-      },
-      OpSize::Word => match value {
-        0 => RegisterType::Ax,
-        1 => RegisterType::Cx,
-        2 => RegisterType::Dx,
-        3 => RegisterType::Bx,
-        4 => RegisterType::Sp,
-        5 => RegisterType::Bp,
-        6 => RegisterType::Si,
-        7 => RegisterType::Di,
-        _ => return None,
-      },
-    })
-  }
-  fn to_value(&self) -> u8 {
-    (*self as u8) & 0x7
-  }
-}
-
-impl SegmentRegisterType {
-  fn from_value(value: u8) -> Option<SegmentRegisterType> {
+impl RegisterWordType {
+  fn from_value(value: u8) -> Option<RegisterWordType> {
     Some(match value {
-      0 => SegmentRegisterType::Es,
-      1 => SegmentRegisterType::Cs,
-      2 => SegmentRegisterType::Ss,
-      3 => SegmentRegisterType::Ds,
+      0 => RegisterWordType::Ax,
+      1 => RegisterWordType::Cx,
+      2 => RegisterWordType::Dx,
+      3 => RegisterWordType::Bx,
+      4 => RegisterWordType::Sp,
+      5 => RegisterWordType::Bp,
+      6 => RegisterWordType::Si,
+      7 => RegisterWordType::Di,
       _ => return None,
     })
   }
-  fn to_value(&self) -> u8 {
-    *self as u8
+  fn from_seg(value: u8) -> Option<RegisterWordType> {
+    Some(match value {
+      0 => RegisterWordType::Es,
+      1 => RegisterWordType::Cs,
+      2 => RegisterWordType::Ss,
+      3 => RegisterWordType::Ds,
+      _ => return None,
+    })
+  }
+}
+
+impl RegisterByteType {
+  fn from_value(value: u8) -> Option<RegisterByteType> {
+    Some(match value {
+      0 => RegisterByteType::Al,
+      1 => RegisterByteType::Cl,
+      2 => RegisterByteType::Dl,
+      3 => RegisterByteType::Bl,
+      4 => RegisterByteType::Ah,
+      5 => RegisterByteType::Ch,
+      6 => RegisterByteType::Dh,
+      7 => RegisterByteType::Bh,
+      _ => return None,
+    })
   }
 }
 
@@ -267,9 +261,9 @@ pub enum Op {
   InVariable(OpSize, u8),
   OutFixed(OpSize),
   OutVariable(OpSize, u8),
-  Lea(RegisterType, Operand),
-  Lds(RegisterType, Operand),
-  Les(RegisterType, Operand),
+  Lea(RegisterWordType, Operand),
+  Lds(RegisterWordType, Operand),
+  Les(RegisterWordType, Operand),
   Movs(OpSize),
   Cmps(OpSize),
   Scas(OpSize),
@@ -283,7 +277,7 @@ pub enum Op {
   RetInterImm(u16),
   Int(u8),
   Esc(u8, Operand),
-  Segment(SegmentRegisterType),
+  Segment(RegisterWordType),
 }
 
 fn iter_next_u16(iter: &mut dyn Iterator<Item = u8>) -> Option<u16> {
