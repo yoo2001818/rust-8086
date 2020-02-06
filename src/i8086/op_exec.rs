@@ -28,12 +28,21 @@ impl OperandOpValue for u8 {
     let dest_val = cpu.get_operand::<u8>(dest);
     match op {
       OpBinaryOp::Adc => {
-        let (result_val, cf) = u8::overflowing_add(src_val, dest_val);
-        let of = false; // TODO
-        let sf = result_val & 0x80 != 0;
+        let result_val = src_val + dest_val;
+        let cf = result_val > src_val && result_val > dest_val;
+        let pf = result_val & 0x1 != 0;
+        let af = (~(src_val ^ dest_val)) & (src_val ^ result_val) & 0x8;
         let zf = result_val == 0;
-        let af = false; // TODO
-        let pf = result_val & 0x1;
+        let sf = result_val & 0x80 != 0;
+        let of = (~(src_val ^ dest_val)) & (src_val ^ result_val) & 0x80;
+        let flagClear = 0b100011010101;
+        let flagSet =
+          cf ? 0x1 : 0 +
+          pf ? 0x2 : 0 +
+          af ? 0x8 : 0 +
+          zf ? 0x20 : 0 +
+          sf ? 0x40 : 0 +
+          of ? 0x0800 : 0;
       }
     }
   }
