@@ -2,89 +2,94 @@ use super::cpu::CPU;
 use super::operand::*;
 use super::op::*;
 
-trait OperandOpValue: OperandValue {
-  fn exec_binary(
-    cpu: &mut CPU,
-    op: &OpBinaryOp,
-    src: &Operand,
-    dest: &Operand,
-  ) -> ();
-  fn exec_unary(
-    cpu: &mut CPU,
-    op: &OpUnaryOp,
-    src: &Operand,
-    dest: &Operand,
-  ) -> ();
+type Flags = (u16, u16);
+
+trait OperandOpValue: Sized {
+  fn add(
+    src: Self,
+    dest: Self,
+    carry: bool,
+  ) -> (Self, Flags);
+  fn sub(
+    src: Self,
+    dest: Self,
+    carry: bool,
+  ) -> (Self, Flags);
+  fn and(src: Self, dest: Self) -> Self;
+  fn or(src: Self, dest: Self) -> Self;
+  fn xor(src: Self, dest: Self) -> Self;
+  fn get_flags(value: Self) -> Flags;
 }
 
 impl OperandOpValue for u8 {
-  fn exec_binary(
-    cpu: &mut CPU,
-    op: &OpBinaryOp,
-    src: &Operand,
-    dest: &Operand,
-  ) -> () {
-    let src_val = cpu.get_operand::<u8>(src);
-    let dest_val = cpu.get_operand::<u8>(dest);
-    match op {
-      OpBinaryOp::Adc => {
-        let result_val = src_val + dest_val;
-        let cf = result_val > src_val && result_val > dest_val;
-        let pf = result_val & 0x1 != 0;
-        let af = (~(src_val ^ dest_val)) & (src_val ^ result_val) & 0x8;
-        let zf = result_val == 0;
-        let sf = result_val & 0x80 != 0;
-        let of = (~(src_val ^ dest_val)) & (src_val ^ result_val) & 0x80;
-        let flagClear = 0b100011010101;
-        let flagSet =
-          cf ? 0x1 : 0 +
-          pf ? 0x2 : 0 +
-          af ? 0x8 : 0 +
-          zf ? 0x20 : 0 +
-          sf ? 0x40 : 0 +
-          of ? 0x0800 : 0;
-      }
-    }
+  fn add(src: u8, dest: u8, carry: bool) -> (u8, Flags) {
+    let result = src + dest + (if carry { 1 } else { 0 });
+    let cf = result > src && result > dest;
+    let af = (!(src ^ dest)) & (src ^ result) & 0x8 != 0;
+    let of = (!(src ^ dest)) & (src ^ result) & 0x80 != 0;
+    let (prev_clear, prev_set) = OperandOpValue::get_flags(result);
+    (result, (
+      prev_clear | 0x0809,
+      prev_set |
+      if cf { 0x1 } else { 0 } |
+      if af { 0x8 } else { 0 } |
+      if of { 0x0800 } else { 0 },
+    ))
   }
-  fn exec_unary(
-    cpu: &mut CPU,
-    op: &OpUnaryOp,
-    src: &Operand,
-    dest: &Operand,
-  ) -> () {
-
+  fn sub(src: u8, dest: u8, carry: bool) -> (u8, Flags) {
+    let new_src = (-(src as i8) - (if carry { 1 } else { 0 })) as u8;
+    let result = dest - new_src;
+    let cf = result > new_src && result > dest;
+    let af = (!(new_src ^ dest)) & (new_src ^ result) & 0x8 != 0;
+    let of = (!(new_src ^ dest)) & (new_src ^ result) & 0x80 != 0;
+    let (prev_clear, prev_set) = OperandOpValue::get_flags(result);
+    (result, (
+      prev_clear | 0x0809,
+      prev_set |
+      if cf { 0x1 } else { 0 } |
+      if af { 0x8 } else { 0 } |
+      if of { 0x0800 } else { 0 },
+    ))
   }
-}
-
-impl OperandOpValue for u16 {
-  fn exec_binary(
-    cpu: &mut CPU,
-    op: &OpBinaryOp,
-    src: &Operand,
-    dest: &Operand,
-  ) -> () {
-
+  fn and(src: u8, dest: u8) -> u8 {
+    src & dest
   }
-  fn exec_unary(
-    cpu: &mut CPU,
-    op: &OpUnaryOp,
-    src: &Operand,
-    dest: &Operand,
-  ) -> () {
-
+  fn or(src: u8, dest: u8) -> u8 {
+    src | dest
+  }
+  fn xor(src: u8, dest: u8) -> u8 {
+    src ^ dest
+  }
+  fn get_flags(value: u8) -> Flags {
+    let sf = value & 0x80 != 0;
+    let zf = value == 0;
+    let pf = value & 0x1 != 0;
+    (0x62,
+      if sf { 0x40 } else { 0 } |
+      if zf { 0x20 } else { 0 } |
+      if pf { 0x2 } else { 0 }
+    )
   }
 }
 
-fn exec_binary_sized(
+fn exec_binary<R, V>(
   cpu: &mut CPU,
   op: &OpBinaryOp,
-  size: &OpSize,
-  src: &Operand,
-  dest: &Operand,
+  src: &Operand<R>,
+  dest: &Operand<R>,
 ) -> () {
-  match size {
-    OpSize::Byte => u8::exec_binary(cpu, op, src, dest),
-    OpSize::Word => u16::exec_binary(cpu, op, src, dest),
+  match op {
+    OpBinaryOp::Adc => (),
+    OpBinaryOp::Add => (),
+    OpBinaryOp::And => (),
+    OpBinaryOp::Cmp => (),
+    OpBinaryOp::Mov => (),
+    OpBinaryOp::Or => (),
+    OpBinaryOp::Sbb => (),
+    OpBinaryOp::Sub => (),
+    OpBinaryOp::Test => (),
+    OpBinaryOp::Xchg => (),
+    OpBinaryOp::Xor => (),
   }
 }
 
