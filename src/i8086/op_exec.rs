@@ -1,6 +1,7 @@
 use super::cpu::CPU;
 use super::operand::*;
 use super::op::*;
+use super::flags::*;
 
 type Flags = (u16, u16);
 
@@ -29,11 +30,11 @@ impl OperandOpValue for u8 {
     let of = (!(src ^ dest)) & (src ^ result) & 0x80 != 0;
     let (prev_clear, prev_set) = OperandOpValue::get_flags(result);
     (result, (
-      prev_clear | 0x0809,
+      prev_clear | CF | AF | OF,
       prev_set |
-      if cf { 0x1 } else { 0 } |
-      if af { 0x8 } else { 0 } |
-      if of { 0x0800 } else { 0 },
+      if cf { CF } else { 0 } |
+      if af { AF } else { 0 } |
+      if of { OF } else { 0 },
     ))
   }
   fn sub(src: u8, dest: u8, carry: bool) -> (u8, Flags) {
@@ -44,11 +45,11 @@ impl OperandOpValue for u8 {
     let of = (!(new_src ^ dest)) & (new_src ^ result) & 0x80 != 0;
     let (prev_clear, prev_set) = OperandOpValue::get_flags(result);
     (result, (
-      prev_clear | 0x0809,
+      prev_clear | CF | AF | OF,
       prev_set |
-      if cf { 0x1 } else { 0 } |
-      if af { 0x8 } else { 0 } |
-      if of { 0x0800 } else { 0 },
+      if cf { CF } else { 0 } |
+      if af { AF } else { 0 } |
+      if of { OF } else { 0 },
     ))
   }
   fn and(src: u8, dest: u8) -> u8 {
@@ -64,10 +65,10 @@ impl OperandOpValue for u8 {
     let sf = value & 0x80 != 0;
     let zf = value == 0;
     let pf = value & 0x1 != 0;
-    (0x62,
-      if sf { 0x40 } else { 0 } |
-      if zf { 0x20 } else { 0 } |
-      if pf { 0x2 } else { 0 }
+    (SF | ZF | PF,
+      if sf { SF } else { 0 } |
+      if zf { ZF } else { 0 } |
+      if pf { PF } else { 0 }
     )
   }
 }
