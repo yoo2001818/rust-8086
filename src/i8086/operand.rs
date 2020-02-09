@@ -43,10 +43,17 @@ impl CPU {
     };
     base_offset + offset
   }
-  pub fn get_segment_addr(&self) -> usize {
-    (self.register.ds as usize) << 4
+  pub fn get_segment_addr(&self, segment: &Option<RegisterWordType>) -> usize {
+    (match segment {
+      Some(reg) => u16::read_reg(&self.register, reg),
+      None => self.register.ds,
+    } as usize) << 4
   }
-  pub fn get_operand<T, R>(&self, operand: &Operand<R>) -> T
+  pub fn get_operand_with_seg<T, R>(
+    &self,
+    operand: &Operand<R>,
+    segment: &Option<RegisterWordType>,
+  ) -> T
     where T: OperandValue<R>, R: RegisterType
   {
     match operand {
@@ -54,31 +61,53 @@ impl CPU {
       Operand::Address(addr, offset) => T::read_mem(
         &self.memory,
         (self.get_offset(addr, *offset) as usize) +
-        self.get_segment_addr()),
+        self.get_segment_addr(segment)),
       Operand::Direct(offset) => T::read_mem(
         &self.memory,
         (*offset as usize) +
-        self.get_segment_addr()),
+        self.get_segment_addr(segment)),
       Operand::ImmWord(value) => T::from_u16(*value),
       Operand::ImmByte(value) => T::from_u8(*value),
     }
   }
-  pub fn set_operand<T, R>(&mut self, operand: &Operand<R>, value: T) -> ()
+  pub fn set_operand_with_seg<T, R>(
+    &mut self,
+    operand: &Operand<R>,
+    segment: &Option<RegisterWordType>,
+    value: T,
+  ) -> ()
     where T: OperandValue<R>, R: RegisterType
   {
     match operand {
       Operand::Register(reg) => T::write_reg(&mut self.register, reg, value),
       Operand::Address(addr, offset) => {
         let address = (self.get_offset(addr, *offset) as usize) +
-          self.get_segment_addr();
+          self.get_segment_addr(segment);
         T::write_mem(&mut self.memory, address, value);
       }
       Operand::Direct(offset) => {
-        let address = (*offset as usize) + self.get_segment_addr();
+        let address = (*offset as usize) + self.get_segment_addr(segment);
         T::write_mem(&mut self.memory, address, value);
       }
       _ => (),
     }
+  }
+  pub fn get_operand<T, R>(
+    &self,
+    operand: &Operand<R>,
+  ) -> T
+    where T: OperandValue<R>, R: RegisterType
+  {
+    self.get_operand_with_seg(operand, &None)
+  }
+  pub fn set_operand<T, R>(
+    &mut self,
+    operand: &Operand<R>,
+    value: T,
+  ) -> ()
+    where T: OperandValue<R>, R: RegisterType
+  {
+    self.set_operand_with_seg(operand, &None, value)
   }
 }
 

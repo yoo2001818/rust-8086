@@ -1,13 +1,13 @@
 use super::cpu::CPU;
 
 impl CPU {
-  fn get_flags(&self) -> u16 {
+  pub fn get_flags(&self) -> u16 {
     self.register.flags
   }
-  fn set_flags(&mut self, value: u16) -> () {
+  pub fn set_flags(&mut self, value: u16) -> () {
     self.register.flags = value;
   }
-  fn blit_flags(&mut self, clear: u16, set: u16) -> () {
+  pub fn blit_flags(&mut self, clear: u16, set: u16) -> () {
     self.register.flags =
       (self.register.flags & !clear) | set;
   }
