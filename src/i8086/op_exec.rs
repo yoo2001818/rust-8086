@@ -32,7 +32,7 @@ trait OperandOpValue: Sized + Copy {
 
 impl OperandOpValue for u8 {
   fn zero() -> u8 { 0 }
-  fn get_stack_size() -> u16 { 1 }
+  fn get_stack_size() -> u16 { 2 }
   fn add(src: u8, dest: u8, carry: bool) -> (u8, Flags) {
     let result = src + dest + (if carry { 1 } else { 0 });
     let cf = result > src && result > dest;
@@ -116,6 +116,115 @@ impl OperandOpValue for u8 {
   }
   fn get_flags(value: u8) -> Flags {
     let sf = value & 0x80 != 0;
+    let zf = value == 0;
+    let mut pf = true;
+    for i in 0..8 {
+      pf = pf != ((value & (1 << i)) != 0);
+    }
+    (SF | ZF | PF,
+      if sf { SF } else { 0 } |
+      if zf { ZF } else { 0 } |
+      if pf { PF } else { 0 }
+    )
+  }
+}
+
+impl OperandOpValue for u16 {
+  fn zero() -> u16 { 0 }
+  fn get_stack_size() -> u16 { 2 }
+  fn add(src: u16, dest: u16, carry: bool) -> (u16, Flags) {
+    let result = src + dest + (if carry { 1 } else { 0 });
+    let cf = result > src && result > dest;
+    let af = (!(src ^ dest)) & (src ^ result) & 0x8 != 0;
+    let of = (!(src ^ dest)) & (src ^ result) & 0x8000 != 0;
+    let (prev_clear, prev_set) = OperandOpValue::get_flags(result);
+    (result, (
+      prev_clear | CF | AF | OF,
+      prev_set |
+      if cf { CF } else { 0 } |
+      if af { AF } else { 0 } |
+      if of { OF } else { 0 },
+    ))
+  }
+  fn sub(src: u16, dest: u16, carry: bool) -> (u16, Flags) {
+    let new_src = (-(src as i8) - (if carry { 1 } else { 0 })) as u16;
+    let result = dest - new_src;
+    let cf = result > new_src && result > dest;
+    let af = (!(new_src ^ dest)) & (new_src ^ result) & 0x8 != 0;
+    let of = (!(new_src ^ dest)) & (new_src ^ result) & 0x8000 != 0;
+    let (prev_clear, prev_set) = OperandOpValue::get_flags(result);
+    (result, (
+      prev_clear | CF | AF | OF,
+      prev_set |
+      if cf { CF } else { 0 } |
+      if af { AF } else { 0 } |
+      if of { OF } else { 0 },
+    ))
+  }
+  fn and(src: u16, dest: u16) -> u16 {
+    src & dest
+  }
+  fn or(src: u16, dest: u16) -> u16 {
+    src | dest
+  }
+  fn xor(src: u16, dest: u16) -> u16 {
+    src ^ dest
+  }
+  fn not(dest: u16) -> u16 {
+    !dest
+  }
+  fn mul(cpu: &mut CPU, value: u16) -> () {
+    let other = u16::read_reg(&cpu.register, &RegisterWordType::Ax);
+    let result = (other as u32) * (value as u32);
+    u16::write_reg(&mut cpu.register, &RegisterWordType::Ax,
+      (result & 0xFFFF) as u16);
+    u16::write_reg(&mut cpu.register, &RegisterWordType::Dx,
+      ((result >> 16) & 0xFFFF) as u16);
+    cpu.blit_flags(OF | CF, if result & 0xFFFF0000 == 0 { OF | CF } else { 0 });
+  }
+  fn imul(cpu: &mut CPU, value: u16) -> () {
+    let other = u16::read_reg(&cpu.register, &RegisterWordType::Ax);
+    let result = ((other as i8 as i32) * (value as i8 as i32)) as u32;
+    u16::write_reg(&mut cpu.register, &RegisterWordType::Ax,
+      (result & 0xFFFF) as u16);
+    u16::write_reg(&mut cpu.register, &RegisterWordType::Dx,
+      ((result >> 16) & 0xFFFF) as u16);
+    cpu.blit_flags(OF | CF, if result & 0xFFFF0000 == 0 { OF | CF } else { 0 });
+  }
+  fn div(cpu: &mut CPU, value: u16) -> Option<()> {
+    if value == 0 {
+      return None;
+    }
+    let dividend =
+      u16::read_reg(&cpu.register, &RegisterWordType::Ax) as u32 |
+      ((u16::read_reg(&cpu.register, &RegisterWordType::Dx) as u32) << 16);
+    let quotient = dividend / (value as u32);
+    if quotient > 0xFFFF {
+      return None;
+    }
+    let remainder = dividend % (value as u32);
+    u16::write_reg(&mut cpu.register, &RegisterWordType::Ax, quotient as u16);
+    u16::write_reg(&mut cpu.register, &RegisterWordType::Dx, remainder as u16);
+    Some(())
+  }
+  fn idiv(cpu: &mut CPU, value: u16) -> Option<()> {
+    if value == 0 {
+      return None;
+    }
+    let dividend =
+      u16::read_reg(&cpu.register, &RegisterWordType::Ax) as u32 |
+      ((u16::read_reg(&cpu.register, &RegisterWordType::Dx) as u32) << 16);
+    let quotient = (dividend as i32 / (value as i32)) as u32;
+    if quotient > 0x7FFF || quotient < 0x8000 {
+      return None;
+    }
+    let remainder = ((dividend as i32) % (value as i32)) as u32;
+    u16::write_reg(&mut cpu.register, &RegisterWordType::Ax, quotient as u16);
+    u16::write_reg(&mut cpu.register, &RegisterWordType::Dx, remainder as u16);
+    Some(())
+  }
+  fn get_flags(value: u16) -> Flags {
+    let sf = value & 0x8000 != 0;
     let zf = value == 0;
     let mut pf = true;
     for i in 0..8 {
@@ -272,12 +381,14 @@ impl CPU {
         exec_binary::<u8, RegisterByteType>(self, op, src, dest);
       },
       Op::BinaryWord { op, src, dest } => {
-        // exec_binary::<u16, RegisterWordType>(self, op, src, dest);
+        exec_binary::<u16, RegisterWordType>(self, op, src, dest);
       },
       Op::UnaryByte { op, dest } => {
         exec_unary::<u8, RegisterByteType>(self, op, dest);
       },
-      Op::UnaryWord { op, dest } => {},
+      Op::UnaryWord { op, dest } => {
+        exec_unary::<u16, RegisterWordType>(self, op, dest);
+      },
       Op::Nullary(op) => {},
       Op::ShiftByte { op, shift_type, dest } => {},
       Op::ShiftWord { op, shift_type, dest } => {},
