@@ -8,7 +8,9 @@ type Flags = (u16, u16);
 
 trait OperandOpValue: Sized + Copy {
   fn zero() -> Self;
+  fn one() -> Self;
   fn get_stack_size() -> u16;
+  fn get_bits() -> u8;
   fn add(
     src: Self,
     dest: Self,
@@ -37,7 +39,9 @@ trait OperandOpValue: Sized + Copy {
 
 impl OperandOpValue for u8 {
   fn zero() -> u8 { 0 }
+  fn one() -> u8 { 1 }
   fn get_stack_size() -> u16 { 2 }
+  fn get_bits() -> u8 { 8 }
   fn add(src: u8, dest: u8, carry: bool) -> (u8, Flags) {
     let result = src + dest + (if carry { 1 } else { 0 });
     let cf = result > src && result > dest;
@@ -119,6 +123,21 @@ impl OperandOpValue for u8 {
     u8::write_reg(&mut cpu.register, &RegisterByteType::Ah, remainder as u8);
     Some(())
   }
+  fn shl(src: u8, count: u8) -> u8 {
+    src << count
+  }
+  fn shr(src: u8, count: u8) -> u8 {
+    src >> count
+  }
+  fn sar(src: u8, count: u8) -> u8 {
+    ((src as i8) >> count) as u8
+  }
+  fn msb(src: u8) -> bool {
+    src & 0x80 != 0
+  }
+  fn lsb(src: u8) -> bool {
+    src & 0x1 != 0
+  }
   fn get_flags(value: u8) -> Flags {
     let sf = value & 0x80 != 0;
     let zf = value == 0;
@@ -136,7 +155,9 @@ impl OperandOpValue for u8 {
 
 impl OperandOpValue for u16 {
   fn zero() -> u16 { 0 }
+  fn one() -> u16 { 1 }
   fn get_stack_size() -> u16 { 2 }
+  fn get_bits() -> u8 { 16 }
   fn add(src: u16, dest: u16, carry: bool) -> (u16, Flags) {
     let result = src + dest + (if carry { 1 } else { 0 });
     let cf = result > src && result > dest;
@@ -227,6 +248,21 @@ impl OperandOpValue for u16 {
     u16::write_reg(&mut cpu.register, &RegisterWordType::Ax, quotient as u16);
     u16::write_reg(&mut cpu.register, &RegisterWordType::Dx, remainder as u16);
     Some(())
+  }
+  fn shl(src: u16, count: u8) -> u16 {
+    src << count
+  }
+  fn shr(src: u16, count: u8) -> u16 {
+    src >> count
+  }
+  fn sar(src: u16, count: u8) -> u16 {
+    ((src as i16) >> count) as u16
+  }
+  fn msb(src: u16) -> bool {
+    src & 0x8000 != 0
+  }
+  fn lsb(src: u16) -> bool {
+    src & 0x1 != 0
   }
   fn get_flags(value: u16) -> Flags {
     let sf = value & 0x8000 != 0;
@@ -394,14 +430,79 @@ fn exec_shift<T, R>(
   };
   let (result, (flag_clear, flag_set)) = match op {
     OpShiftOp::Rol => {
+      let bits = T::get_bits();
+      let wrapped_count = count % bits;
+      // a = a << 1 | a >> 7;
+      let result = T::or(
+        T::shl(dest_val, wrapped_count),
+        T::shr(dest_val, bits - wrapped_count));
+      let cf = T::lsb(result);
+      let of = count == 1 && T::msb(result) != cf;
+      (result, (CF | OF, if cf { CF } else { 0 } | if of { OF } else { 0 }))
     },
-    OpShiftOp::Ror => {},
-    OpShiftOp::Rcl => {},
-    OpShiftOp::Rcr => {},
-    OpShiftOp::Shl | OpShiftOp::Sal => T::shl(dest_val, count),
-    OpShiftOp::Shr => T::shr(dest_val, count),
-    OpShiftOp::Sar => T::sar(dest_val, count),
-  }
+    OpShiftOp::Ror => {
+      let bits = T::get_bits();
+      let wrapped_count = count % bits;
+      // a = a >> 1 | a << 7;
+      let result = T::or(
+        T::shr(dest_val, wrapped_count),
+        T::shl(dest_val, bits - wrapped_count));
+      let cf = T::msb(result);
+      let of = count == 1 && cf != T::msb(T::shl(result, 1));
+      (result, (CF | OF, if cf { CF } else { 0 } | if of { OF } else { 0 }))
+    },
+    OpShiftOp::Rcl => {
+      let bits = T::get_bits() + 1;
+      let wrapped_count = count % (bits + 1);
+      let prev_cf = cpu.get_flags() % CF != 0;
+      // a = a << 1 | a >> 8 | cf;
+      // a = a << 2 | a >> 7 | cf << 1;
+      let result = T::or(
+        T::shl(if prev_cf { T::one() } else { T::zero() }, wrapped_count - 1),
+        T::or(
+          T::shl(dest_val, wrapped_count),
+          T::shr(dest_val, bits + 1 - wrapped_count)),
+        );
+      let cf = T::msb(T::shl(dest_val, wrapped_count - 1));
+      let of = count == 1 && T::msb(result) != cf;
+      (result, (CF | OF, if cf { CF } else { 0 } | if of { OF } else { 0 }))
+    },
+    OpShiftOp::Rcr => {
+      let bits = T::get_bits() + 1;
+      let wrapped_count = count % (bits + 1);
+      let prev_cf = cpu.get_flags() % CF != 0;
+      let of = count == 1 && T::msb(dest_val) != prev_cf;
+      // a = a >> 1 | a << 8 | cf << 7;
+      // a = a >> 2 | a << 7 | cf << 6;
+      let result = T::or(
+        T::shl(if prev_cf { T::one() } else { T::zero() }, bits - wrapped_count),
+        T::or(
+          T::shr(dest_val, wrapped_count),
+          T::shl(dest_val, bits + 1 - wrapped_count)),
+        );
+      let cf = T::lsb(T::shr(dest_val, wrapped_count - 1));
+      (result, (CF | OF, if cf { CF } else { 0 } | if of { OF } else { 0 }))
+    },
+    OpShiftOp::Shl | OpShiftOp::Sal => {
+      let cf = T::msb(T::shl(dest_val, count - 1));
+      let result = T::shl(dest_val, count);
+      let of = count == 1 && T::msb(result) != cf;
+      (result, (CF | OF, if cf { CF } else { 0 } | if of { OF } else { 0 }))
+    },
+    OpShiftOp::Shr => {
+      let cf = T::lsb(T::shr(dest_val, count - 1));
+      let result = T::shr(dest_val, count);
+      let of = count == 1 && T::msb(dest_val);
+      (result, (CF | OF, if cf { CF } else { 0 } | if of { OF } else { 0 }))
+    },
+    OpShiftOp::Sar => {
+      let cf = T::lsb(T::sar(dest_val, count - 1));
+      let result = T::sar(dest_val, count);
+      (result, (CF, if cf { CF } else { 0 }))
+    },
+  };
+  cpu.set_operand(dest, result);
+  cpu.blit_flags(flag_clear, flag_set);
 }
 
 impl CPU {
@@ -419,8 +520,12 @@ impl CPU {
       Op::UnaryWord { op, dest } => {
         exec_unary::<u16, RegisterWordType>(self, op, dest);
       },
-      Op::ShiftByte { op, shift_type, dest } => {},
-      Op::ShiftWord { op, shift_type, dest } => {},
+      Op::ShiftByte { op, shift_type, dest } => {
+        exec_shift::<u8, RegisterByteType>(self, op, shift_type, dest);
+      },
+      Op::ShiftWord { op, shift_type, dest } => {
+        exec_shift::<u16, RegisterWordType>(self, op, shift_type, dest);
+      },
       Op::Nullary(op) => {},
       Op::CondJmp { op, offset } => {},
       Op::InFixed(size) => {},
