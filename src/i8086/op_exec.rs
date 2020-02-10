@@ -27,6 +27,11 @@ trait OperandOpValue: Sized + Copy {
   fn imul(cpu: &mut CPU, value: Self) -> ();
   fn div(cpu: &mut CPU, value: Self) -> Option<()>;
   fn idiv(cpu: &mut CPU, value: Self) -> Option<()>;
+  fn shl(src: Self, count: u8) -> Self;
+  fn sar(src: Self, count: u8) -> Self;
+  fn shr(src: Self, count: u8) -> Self;
+  fn msb(src: Self) -> bool;
+  fn lsb(src: Self) -> bool;
   fn get_flags(value: Self) -> Flags;
 }
 
@@ -374,6 +379,31 @@ fn exec_unary<T, R>(
   }
 }
 
+fn exec_shift<T, R>(
+  cpu: &mut CPU,
+  op: &OpShiftOp,
+  shift_type: &OpShiftType,
+  dest: &Operand<R>,
+) -> () 
+  where T: OperandValue<R> + OperandOpValue, R: RegisterType
+{
+  let dest_val: T = cpu.get_operand(dest);
+  let count = match shift_type {
+    OpShiftType::Cl => u8::read_reg(&cpu.register, &RegisterByteType::Cl),
+    OpShiftType::One => 1,
+  };
+  let (result, (flag_clear, flag_set)) = match op {
+    OpShiftOp::Rol => {
+    },
+    OpShiftOp::Ror => {},
+    OpShiftOp::Rcl => {},
+    OpShiftOp::Rcr => {},
+    OpShiftOp::Shl | OpShiftOp::Sal => T::shl(dest_val, count),
+    OpShiftOp::Shr => T::shr(dest_val, count),
+    OpShiftOp::Sar => T::sar(dest_val, count),
+  }
+}
+
 impl CPU {
   pub fn exec_op(&mut self, op: &Op) -> () {
     match op {
@@ -389,9 +419,9 @@ impl CPU {
       Op::UnaryWord { op, dest } => {
         exec_unary::<u16, RegisterWordType>(self, op, dest);
       },
-      Op::Nullary(op) => {},
       Op::ShiftByte { op, shift_type, dest } => {},
       Op::ShiftWord { op, shift_type, dest } => {},
+      Op::Nullary(op) => {},
       Op::CondJmp { op, offset } => {},
       Op::InFixed(size) => {},
       Op::InVariable(size, value) => {},
