@@ -22,6 +22,18 @@ impl CPU {
   pub fn next_op(&mut self) -> Option<Op> {
     parse_op(&mut self.iter())
   }
+
+  pub fn next(&mut self) -> Option<()> {
+    let op = self.next_op()?;
+    println!("{:#?}", op);
+    self.exec_op(&op);
+    Some(())
+  }
+
+  pub fn jmp(&mut self, seg: u16, addr: u16) -> () {
+    self.register.cs = seg;
+    self.register.ip = addr;
+  }
 }
 
 pub struct CPUIterator<'cpu> {

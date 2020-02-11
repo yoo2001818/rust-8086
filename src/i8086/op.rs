@@ -342,9 +342,9 @@ fn create_binary_op_word(
 ) -> Option<Op> {
   let mod_rm = parse_mod_rm::<RegisterWordType>(second, iter)?;
   if inversed {
-    Some(Op::BinaryWord { op, src: mod_rm, dest: other })
-  } else {
     Some(Op::BinaryWord { op, src: other, dest: mod_rm })
+  } else {
+    Some(Op::BinaryWord { op, src: mod_rm, dest: other })
   }
 }
 
@@ -1090,8 +1090,8 @@ fn test_parse_add() {
       parse_op(&mut input.into_iter()),
       Some(Op::BinaryWord {
         op: OpBinaryOp::Xor,
-        src: Operand::Register(RegisterWordType::Ax),
-        dest: Operand::Address(AddressType::BxSi, 0xcdab),
+        src: Operand::Address(AddressType::BxSi, 0xcdab),
+        dest: Operand::Register(RegisterWordType::Ax),
       }),
     );
   }
