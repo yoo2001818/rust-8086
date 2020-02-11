@@ -505,6 +505,77 @@ fn exec_shift<T, R>(
   cpu.blit_flags(flag_clear, flag_set);
 }
 
+fn exec_nullary(cpu: &mut CPU, op: &OpNullaryOp) -> () {
+  match op {
+    OpNullaryOp::Xlat => {},
+    OpNullaryOp::Lahf => {},
+    OpNullaryOp::Sahf => {},
+    OpNullaryOp::Pushf => {},
+    OpNullaryOp::Popf => {},
+    OpNullaryOp::Aaa => {},
+    OpNullaryOp::Daa => {},
+    OpNullaryOp::Aas => {},
+    OpNullaryOp::Das => {},
+    OpNullaryOp::Aam => {},
+    OpNullaryOp::Aad => {},
+    OpNullaryOp::Cbw => {},
+    OpNullaryOp::Cwd => {},
+    OpNullaryOp::Rep => {},
+    OpNullaryOp::Repz => {},
+    OpNullaryOp::Into => {},
+    OpNullaryOp::Iret => {},
+    OpNullaryOp::Clc => {},
+    OpNullaryOp::Cmc => {},
+    OpNullaryOp::Stc => {},
+    OpNullaryOp::Cld => {},
+    OpNullaryOp::Std => {},
+    OpNullaryOp::Cli => {},
+    OpNullaryOp::Sti => {},
+    OpNullaryOp::Hlt => {},
+    OpNullaryOp::Wait => {},
+    OpNullaryOp::Lock => {},
+  }
+}
+
+fn exec_cond_jmp(cpu: &mut CPU, op: &OpCondJmpOp, offset: u8) -> () {
+  let flags = cpu.get_flags();
+  let matched = match op {
+    OpCondJmpOp::Jo => flags & OF != 0,
+    OpCondJmpOp::Jno => flags & OF == 0,
+    OpCondJmpOp::Js => flags & SF != 0,
+    OpCondJmpOp::Jns => flags & SF == 0,
+    OpCondJmpOp::Je => flags & ZF != 0,
+    OpCondJmpOp::Jne => flags & ZF == 0,
+    OpCondJmpOp::Jb => flags & CF != 0,
+    OpCondJmpOp::Jnb => flags & CF == 0,
+    OpCondJmpOp::Jbe => flags & (CF | ZF) != 0,
+    OpCondJmpOp::Ja => flags & (CF | ZF) == 0,
+    OpCondJmpOp::Jl => (flags & SF == 0) != (flags & OF == 0),
+    OpCondJmpOp::Jge => (flags & SF == 0) == (flags & OF == 0),
+    OpCondJmpOp::Jle =>
+      flags & ZF != 0 || ((flags & SF == 0) != (flags & OF == 0)),
+    OpCondJmpOp::Jg => 
+      flags & ZF == 0 && ((flags & SF == 0) == (flags & OF == 0)),
+    OpCondJmpOp::Jp => flags & PF != 0,
+    OpCondJmpOp::Jnp => flags & PF == 0,
+    OpCondJmpOp::Jcxz =>
+      u16::read_reg(&cpu.register, &RegisterWordType::Cx) == 0,
+    OpCondJmpOp::Loop | OpCondJmpOp::Loope | OpCondJmpOp::Loopne => {
+      let count = u16::read_reg(&cpu.register, &RegisterWordType::Cx) - 1;
+      u16::write_reg(&mut cpu.register, &RegisterWordType::Cx, count);
+      match op {
+        OpCondJmpOp::Loop => count != 0,
+        OpCondJmpOp::Loope => count != 0 && (flags & ZF != 0),
+        OpCondJmpOp::Loopne => count != 0 && (flags & ZF == 0),
+        _ => false,
+      }
+    },
+  };
+  if matched {
+    cpu.register.ip = ((cpu.register.ip as i16) + (offset as i8 as i16)) as u16;
+  }
+}
+
 impl CPU {
   pub fn exec_op(&mut self, op: &Op) -> () {
     match op {
@@ -526,8 +597,12 @@ impl CPU {
       Op::ShiftWord { op, shift_type, dest } => {
         exec_shift::<u16, RegisterWordType>(self, op, shift_type, dest);
       },
-      Op::Nullary(op) => {},
-      Op::CondJmp { op, offset } => {},
+      Op::Nullary(op) => {
+        exec_nullary(self, op);
+      },
+      Op::CondJmp { op, offset } => {
+        exec_cond_jmp(self, op, *offset);
+      },
       Op::InFixed(size) => {},
       Op::InVariable(size, value) => {},
       Op::OutFixed(size) => {},
