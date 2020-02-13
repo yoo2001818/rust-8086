@@ -1,0 +1,30 @@
+CPU 8086
+global _main 
+_main: 
+db 0x00000000
+; op_push
+mov bp, 0xffff
+; assert bp, 0xffff
+mov sp, 0xffff
+; assert sp, 0xffff
+mov ax, 0xbbbb
+; assert ax, 0xbbbb 
+mov bx, 0xabcd
+; assert bx, 0xabcd
+mov WORD [0xabcd], 0x2222
+; assert [0xabcd], 0x2222
+push ax
+; assert sp, 0xfffd
+; assert [0xfffd], 0xbbbb
+push bx
+; assert sp, 0xfffb
+; assert [0xfffb], 0xabcd
+push WORD [bx]
+; assert sp, 0xfff9
+; assert [0xfff9], 0x2222
+push WORD [0xabcd]
+; assert sp, 0xfff7
+; assert [0xfff7], 0x2222
+push cs
+; assert sp, 0xfff5
+; assert [0xfff5], 0x0000

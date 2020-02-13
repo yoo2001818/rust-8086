@@ -63,3 +63,24 @@ fn op_mov_mem() {
   cpu.next();
   assert_eq!(cpu.register.bx, 0x5353);
 }
+
+#[test]
+fn op_push() {
+  let mut cpu = create_cpu();
+  let input: Vec<u8> = vec![
+    // mov [0x5353], 0xabcd,
+    0xc7, 0x06, 0x53, 0x53, 0xcd, 0xab,
+    // mov [0x2000], 0x8086
+    0xc7, 0x06, 0x00, 0x20, 0x86, 0x80,
+    // movw bx, [0x2000]
+    0x89, 0x1e, 0x00, 0x20,
+    // movw [bx], 0x5353
+    0xc7, 0x07, 0x53, 0x53,
+    // movw bx, [bx]
+    0x89, 0x1f,
+  ];
+  for (i, value) in input.iter().enumerate() {
+    cpu.memory.write_u8(i, *value);
+  }
+  cpu.jmp(0, 0);
+}
