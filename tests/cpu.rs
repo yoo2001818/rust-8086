@@ -84,3 +84,13 @@ fn op_push() {
   }
   cpu.jmp(0, 0);
 }
+
+#[test]
+fn op_tests() {
+  let mut cpu = create_cpu();
+  let test_data = include_bytes!("tests.com");
+  for (i, value) in test_data.into_iter().enumerate() {
+    cpu.memory.write_u8(i + 0x100, *value);
+  }
+  cpu.jmp(0, 0x100);
+}
