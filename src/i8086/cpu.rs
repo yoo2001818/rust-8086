@@ -8,11 +8,12 @@ use super::op::parse_op;
 pub struct CPU {
   pub memory: LinearMemory,
   pub register: Register,
+  pub running: bool,
 }
 
 impl CPU {
   pub fn new(memory: LinearMemory) -> Self {
-    CPU { memory, register: Register::new() }
+    CPU { memory, register: Register::new(), running: true }
   }
 
   pub fn iter(&mut self) -> CPUIterator {
@@ -23,7 +24,10 @@ impl CPU {
     parse_op(&mut self.iter())
   }
 
-  pub fn next(&mut self) -> Option<()> {
+  pub fn step(&mut self) -> Option<()> {
+    if self.running {
+      return None;
+    }
     let op = self.next_op()?;
     println!("{:#?}", op);
     self.exec_op(&op);
@@ -33,6 +37,10 @@ impl CPU {
   pub fn jmp(&mut self, seg: u16, addr: u16) -> () {
     self.register.cs = seg;
     self.register.ip = addr;
+  }
+
+  pub fn hlt(&mut self) -> () {
+    self.running = false;
   }
 }
 

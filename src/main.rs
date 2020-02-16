@@ -14,6 +14,6 @@ fn create_cpu() -> CPU {
 fn main() {
     let mut cpu = create_cpu();
     cpu.memory.write(0, 0xf000);
-    cpu.next();
+    cpu.step();
     println!("Hello, world!");
 }

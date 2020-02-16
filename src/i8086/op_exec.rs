@@ -531,7 +531,9 @@ fn exec_nullary(cpu: &mut CPU, op: &OpNullaryOp) -> () {
     OpNullaryOp::Std => {},
     OpNullaryOp::Cli => {},
     OpNullaryOp::Sti => {},
-    OpNullaryOp::Hlt => {},
+    OpNullaryOp::Hlt => {
+      cpu.running = false;
+    },
     OpNullaryOp::Wait => {},
     OpNullaryOp::Lock => {},
   }
