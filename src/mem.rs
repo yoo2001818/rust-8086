@@ -1,3 +1,6 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 pub trait Memory {
   fn read(&self, word_addr: usize) -> u32;
   fn write(&mut self, word_addr: usize, value: u32) -> ();
@@ -106,6 +109,28 @@ impl Memory for LinearMemory {
   }
   fn write(&mut self, address: usize, value: u32) -> () {
     self.words[address] = value
+  }
+}
+
+pub struct PagedMemorySegment {
+  start: usize,
+  size: usize,
+  memory: Rc<RefCell<dyn Memory>>,
+}
+
+pub struct PagedMemory<'a> {
+  cache: Vec<PagedMemorySegment>,
+  get_item: &'a dyn Fn(usize) -> Option<PagedMemorySegment>,
+}
+
+impl<'a> PagedMemory<'a> {
+  pub fn new(
+    get_item: &'a dyn Fn(usize) -> Option<PagedMemorySegment>,
+  ) -> PagedMemory {
+    PagedMemory {
+      cache: Vec::new(),
+      get_item: get_item,
+    }
   }
 }
 
