@@ -119,7 +119,8 @@ pub struct PagedMemorySegment {
 }
 
 pub struct PagedMemory<'a> {
-  cache: Vec<PagedMemorySegment>,
+  lru_mask: u32,
+  cache: [Option<PagedMemorySegment>; 4],
   get_item: &'a dyn Fn(usize) -> Option<PagedMemorySegment>,
 }
 
@@ -128,9 +129,26 @@ impl<'a> PagedMemory<'a> {
     get_item: &'a dyn Fn(usize) -> Option<PagedMemorySegment>,
   ) -> PagedMemory {
     PagedMemory {
-      cache: Vec::new(),
+      lru_mask: 0,
+      cache: [None; 4],
       get_item: get_item,
     }
+  }
+  fn get_page(&self, address: usize) -> &PagedMemorySegment {
+    
+  }
+}
+
+impl<'a> Memory for PagedMemory<'a> {
+  fn read(&self, address: usize) -> u32 {
+    let segment = self.get_page(address);
+    let memory = segment.memory.borrow();
+    memory.read(address - segment.start)
+  }
+  fn write(&mut self, address: usize, value: u32) -> () {
+    let segment = self.get_page(address);
+    let memory = segment.memory.borrow();
+    memory.write(address - segment.start, value)
   }
 }
 
