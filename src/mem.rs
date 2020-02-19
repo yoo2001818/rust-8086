@@ -121,12 +121,12 @@ pub struct PagedMemorySegment {
 pub struct PagedMemory<'a> {
   lru_mask: u32,
   cache: [Option<PagedMemorySegment>; 4],
-  get_item: &'a dyn Fn(usize) -> Option<PagedMemorySegment>,
+  get_item: &'a dyn Fn(usize) -> &'a Option<PagedMemorySegment>,
 }
 
 impl<'a> PagedMemory<'a> {
   pub fn new(
-    get_item: &'a dyn Fn(usize) -> Option<PagedMemorySegment>,
+    get_item: &'a dyn Fn(usize) -> &'a Option<PagedMemorySegment>,
   ) -> PagedMemory {
     PagedMemory {
       lru_mask: 0,
@@ -134,20 +134,29 @@ impl<'a> PagedMemory<'a> {
       get_item: get_item,
     }
   }
-  fn get_page(&self, address: usize) -> &PagedMemorySegment {
-    
+  fn get_page(&self, address: usize) -> &Option<PagedMemorySegment> {
+    // Cache nothing for now
+    let get_item = self.get_item;
+    let entry = get_item(address);
+    entry
   }
 }
 
 impl<'a> Memory for PagedMemory<'a> {
   fn read(&self, address: usize) -> u32 {
-    let segment = self.get_page(address);
+    let segment = match self.get_page(address) {
+      Some(v) => v,
+      None => return 0,
+    };
     let memory = segment.memory.borrow();
     memory.read(address - segment.start)
   }
   fn write(&mut self, address: usize, value: u32) -> () {
-    let segment = self.get_page(address);
-    let memory = segment.memory.borrow();
+    let segment = match self.get_page(address) {
+      Some(v) => v,
+      None => return,
+    };
+    let mut memory = segment.memory.borrow_mut();
     memory.write(address - segment.start, value)
   }
 }
