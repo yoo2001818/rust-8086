@@ -3,6 +3,7 @@ use super::operand::*;
 use super::op::*;
 use super::register::*;
 use super::flags::*;
+use crate::mem::*;
 
 type Flags = (u16, u16);
 
@@ -606,7 +607,22 @@ impl CPU {
         exec_cond_jmp(self, op, *offset);
       },
       Op::InFixed(size) => {},
-      Op::InVariable(size, value) => {},
+      Op::InVariable(size, value) => {
+        match size {
+          OpSize::Byte => {
+            u8::write_reg(
+              &mut self.register, 
+              &RegisterByteType::Al,
+              u8::read_mem(&*self.io_ports, *value as usize));
+          },
+          OpSize::Word => {
+            u16::write_reg(
+              &mut self.register, 
+              &RegisterWordType::Ax,
+              u16::read_mem(&*self.io_ports, *value as usize));
+          },
+        }
+      },
       Op::OutFixed(size) => {},
       Op::OutVariable(size, value) => {},
       Op::Lea(reg, operand) => {},

@@ -59,11 +59,11 @@ impl CPU {
     match operand {
       Operand::Register(reg) => T::read_reg(&self.register, reg),
       Operand::Address(addr, offset) => T::read_mem(
-        &self.memory,
+        &*self.memory,
         (self.get_offset(addr, *offset) as usize) +
         self.get_segment_addr(segment)),
       Operand::Direct(offset) => T::read_mem(
-        &self.memory,
+        &*self.memory,
         (*offset as usize) +
         self.get_segment_addr(segment)),
       Operand::ImmWord(value) => T::from_u16(*value),
@@ -83,11 +83,11 @@ impl CPU {
       Operand::Address(addr, offset) => {
         let address = (self.get_offset(addr, *offset) as usize) +
           self.get_segment_addr(segment);
-        T::write_mem(&mut self.memory, address, value);
+        T::write_mem(&mut *self.memory, address, value);
       }
       Operand::Direct(offset) => {
         let address = (*offset as usize) + self.get_segment_addr(segment);
-        T::write_mem(&mut self.memory, address, value);
+        T::write_mem(&mut *self.memory, address, value);
       }
       _ => (),
     }

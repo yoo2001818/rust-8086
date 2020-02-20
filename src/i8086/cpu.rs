@@ -1,4 +1,3 @@
-use crate::mem::LinearMemory;
 use crate::mem::Memory;
 use crate::mem::MemoryValue;
 use super::register::Register;
@@ -6,14 +5,15 @@ use super::op::Op;
 use super::op::parse_op;
 
 pub struct CPU {
-  pub memory: LinearMemory,
+  pub memory: Box<dyn Memory>,
+  pub io_ports: Box<dyn Memory>,
   pub register: Register,
   pub running: bool,
 }
 
 impl CPU {
-  pub fn new(memory: LinearMemory) -> Self {
-    CPU { memory, register: Register::new(), running: true }
+  pub fn new(memory: Box<dyn Memory>, io_ports: Box<dyn Memory>) -> Self {
+    CPU { memory, io_ports, register: Register::new(), running: true }
   }
 
   pub fn iter(&mut self) -> CPUIterator {
@@ -60,7 +60,7 @@ impl<'cpu> Iterator for CPUIterator<'cpu> {
   fn next(&mut self) -> Option<u8> {
     let addr = self.cpu.register.ip as usize +
       ((self.cpu.register.cs as usize) << 4);
-    let value = u8::read_mem(&self.cpu.memory, addr);
+    let value = u8::read_mem(&*self.cpu.memory, addr);
     self.cpu.register.ip += 1;
     Some(value)
   }
@@ -77,7 +77,8 @@ mod tests {
     u8::write_mem(&mut mem, 0xFFFF0, 0b11101010);
     u16::write_mem(&mut mem, 0xFFFF1, 0x0000);
     u16::write_mem(&mut mem, 0xFFFF3, 0xf000);
-    let mut cpu = CPU::new(mem);
+    let mut io_ports = LinearMemory::new(0);
+    let mut cpu = CPU::new(Box::new(mem), Box::new(io_ports));
     assert_eq!(
       cpu.next_op(),
       Some(Op::Jmp(OpCallType::InterDirect(0x0000, 0xf000))),
