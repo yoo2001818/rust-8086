@@ -606,7 +606,24 @@ impl CPU {
       Op::CondJmp { op, offset } => {
         exec_cond_jmp(self, op, *offset);
       },
-      Op::InFixed(size) => {},
+      Op::InFixed(size) => {
+        let offset = u16::read_reg(&self.register, &RegisterWordType::Dx)
+          as usize;
+        match size {
+          OpSize::Byte => {
+            u8::write_reg(
+              &mut self.register, 
+              &RegisterByteType::Al,
+              u8::read_mem(&*self.io_ports, offset));
+          },
+          OpSize::Word => {
+            u16::write_reg(
+              &mut self.register, 
+              &RegisterWordType::Ax,
+              u16::read_mem(&*self.io_ports, offset));
+          },
+        }
+      },
       Op::InVariable(size, value) => {
         match size {
           OpSize::Byte => {
@@ -623,8 +640,32 @@ impl CPU {
           },
         }
       },
-      Op::OutFixed(size) => {},
-      Op::OutVariable(size, value) => {},
+      Op::OutFixed(size) => {
+        let offset = u16::read_reg(&self.register, &RegisterWordType::Dx)
+          as usize;
+        match size {
+          OpSize::Byte => {
+            u8::write_mem(&mut *self.io_ports, offset,
+              u8::read_reg(&self.register, &RegisterByteType::Al));
+          },
+          OpSize::Word => {
+            u16::write_mem(&mut *self.io_ports, offset,
+              u16::read_reg(&self.register, &RegisterWordType::Ax));
+          },
+        }
+      },
+      Op::OutVariable(size, value) => {
+        match size {
+          OpSize::Byte => {
+            u8::write_mem(&mut *self.io_ports, *value as usize,
+              u8::read_reg(&self.register, &RegisterByteType::Al));
+          },
+          OpSize::Word => {
+            u16::write_mem(&mut *self.io_ports, *value as usize,
+              u16::read_reg(&self.register, &RegisterWordType::Ax));
+          },
+        }
+      },
       Op::Lea(reg, operand) => {},
       Op::Lds(reg, operand) => {},
       Op::Les(reg, operand) => {},
