@@ -1,5 +1,6 @@
-use std::cell::RefCell;
-use std::rc::Rc;
+pub mod callback;
+pub mod linear;
+pub mod paged;
 
 pub trait Memory {
   fn read(&self, word_addr: usize) -> u32;
@@ -92,81 +93,6 @@ pub trait Memory {
   }
 }
 
-pub struct LinearMemory {
-  words: Vec<u32>,
-}
-
-impl LinearMemory {
-  pub fn new(size: usize) -> LinearMemory {
-    let words = vec![0; size];
-    LinearMemory { words }
-  }
-}
-
-impl Memory for LinearMemory {
-  fn read(&self, address: usize) -> u32 {
-    self.words[address]
-  }
-  fn write(&mut self, address: usize, value: u32) -> () {
-    self.words[address] = value
-  }
-}
-
-pub struct PagedMemorySegment {
-  start: usize,
-  size: usize,
-  memory: Rc<RefCell<dyn Memory>>,
-}
-
-pub struct PagedMemory<'a> {
-  cache: RefCell<Option<&'a PagedMemorySegment>>,
-  get_item: &'a dyn Fn(usize) -> Option<&'a PagedMemorySegment>,
-}
-
-impl<'a> PagedMemory<'a> {
-  pub fn new(
-    get_item: &'a dyn Fn(usize) -> Option<&'a PagedMemorySegment>,
-  ) -> PagedMemory {
-    PagedMemory {
-      cache: RefCell::new(None),
-      get_item: get_item,
-    }
-  }
-  fn get_page(&self, address: usize) -> &RefCell<Option<&'a PagedMemorySegment>> {
-    match *self.cache.borrow() {
-      Some(entry) => {
-        if entry.start >= address && entry.start + entry.size < address {
-          return &self.cache;
-        }
-      },
-      _ => {},
-    };
-    let get_item = self.get_item;
-    let entry = get_item(address);
-    self.cache.replace(entry);
-    &self.cache
-  }
-}
-
-impl<'a> Memory for PagedMemory<'a> {
-  fn read(&self, address: usize) -> u32 {
-    let segment = match *self.get_page(address).borrow() {
-      Some(v) => v,
-      None => return 0,
-    };
-    let memory = segment.memory.borrow();
-    memory.read(address - segment.start)
-  }
-  fn write(&mut self, address: usize, value: u32) -> () {
-    let segment = match *self.get_page(address).borrow() {
-      Some(v) => v,
-      None => return,
-    };
-    let mut memory = segment.memory.borrow_mut();
-    memory.write(address - segment.start, value)
-  }
-}
-
 pub trait MemoryValue {
   fn read_mem(memory: &dyn Memory, byte_addr: usize) -> Self;
   fn write_mem(memory: &mut dyn Memory, byte_addr: usize, value: Self) -> ();
@@ -187,47 +113,5 @@ impl MemoryValue for u16 {
   }
   fn write_mem(memory: &mut dyn Memory, byte_addr: usize, value: u16) -> () {
     memory.write_u16(byte_addr, value)
-  }
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn test() {
-    let mut mem = LinearMemory::new(1024);
-    mem.write(1000, 0x7F7F7F7F);
-    assert_eq!(mem.read(1000), 0x7F7F7F7F);
-  }
-
-  #[test]
-  fn test_u8() {
-    let mut mem = LinearMemory::new(1024);
-    mem.write(0, 0x12345678);
-    mem.write(1, 0xabcdef00);
-    assert_eq!(u8::read_mem(&mem, 0), 0x78);
-    assert_eq!(u8::read_mem(&mem, 1), 0x56);
-    assert_eq!(u8::read_mem(&mem, 2), 0x34);
-    assert_eq!(u8::read_mem(&mem, 3), 0x12);
-    assert_eq!(u8::read_mem(&mem, 4), 0x00);
-    assert_eq!(u8::read_mem(&mem, 5), 0xef);
-    assert_eq!(u8::read_mem(&mem, 6), 0xcd);
-    assert_eq!(u8::read_mem(&mem, 7), 0xab);
-  }
-
-  #[test]
-  fn test_u16() {
-    let mut mem = LinearMemory::new(1024);
-    mem.write(0, 0x12345678);
-    mem.write(1, 0xabcdef00);
-    assert_eq!(u16::read_mem(&mem, 0), 0x5678);
-    assert_eq!(u16::read_mem(&mem, 1), 0x3456);
-    assert_eq!(u16::read_mem(&mem, 2), 0x1234);
-    assert_eq!(u16::read_mem(&mem, 3), 0x0012);
-    assert_eq!(u16::read_mem(&mem, 4), 0xef00);
-    assert_eq!(u16::read_mem(&mem, 5), 0xcdef);
-    assert_eq!(u16::read_mem(&mem, 6), 0xabcd);
-    assert_eq!(u16::read_mem(&mem, 7), 0x00ab);
   }
 }

@@ -1,8 +1,8 @@
 extern crate rust_8086;
 
 use rust_8086::i8086::cpu::CPU;
-use rust_8086::mem::*;
-use rust_8086::mem::LinearMemory;
+use rust_8086::mem::linear::LinearMemory;
+use rust_8086::mem::Memory;
 
 fn create_cpu() -> CPU {
   // 1MB
@@ -25,11 +25,11 @@ fn op_mov_imm() {
     cpu.memory.write_u8(i, *value);
   }
   cpu.jmp(0, 0);
-  cpu.next();
+  cpu.step();
   assert_eq!(cpu.register.ax, 0x8086);
-  cpu.next();
+  cpu.step();
   assert_eq!(cpu.register.bx, 0x0086);
-  cpu.next();
+  cpu.step();
   assert_eq!(cpu.register.cx, 0x0080);
 }
 
@@ -52,15 +52,15 @@ fn op_mov_mem() {
     cpu.memory.write_u8(i, *value);
   }
   cpu.jmp(0, 0);
-  cpu.next();
+  cpu.step();
   assert_eq!(cpu.memory.read_u16(0x5353), 0xabcd);
-  cpu.next();
+  cpu.step();
   assert_eq!(cpu.memory.read_u16(0x2000), 0x8086);
-  cpu.next();
+  cpu.step();
   assert_eq!(cpu.register.bx, 0x8086);
-  cpu.next();
+  cpu.step();
   assert_eq!(cpu.memory.read_u16(0x8086), 0x5353);
-  cpu.next();
+  cpu.step();
   assert_eq!(cpu.register.bx, 0x5353);
 }
 
