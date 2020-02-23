@@ -69,6 +69,7 @@ impl<'cpu> Iterator for CPUIterator<'cpu> {
 #[cfg(test)]
 mod tests {
   use crate::mem::*;
+  use crate::mem::linear::LinearMemory;
   use super::CPU;
   use super::super::op::*;
   #[test]
@@ -77,7 +78,7 @@ mod tests {
     u8::write_mem(&mut mem, 0xFFFF0, 0b11101010);
     u16::write_mem(&mut mem, 0xFFFF1, 0x0000);
     u16::write_mem(&mut mem, 0xFFFF3, 0xf000);
-    let mut io_ports = LinearMemory::new(0);
+    let io_ports = LinearMemory::new(0);
     let mut cpu = CPU::new(Box::new(mem), Box::new(io_ports));
     assert_eq!(
       cpu.next_op(),

@@ -2,12 +2,12 @@ extern crate rust_8086;
 
 use rust_8086::i8086::cpu::CPU;
 use rust_8086::mem::linear::LinearMemory;
-use rust_8086::mem::Memory;
 
 fn create_cpu() -> CPU {
   // 1MB
   let memory = LinearMemory::new(1024 * 1024);
-  CPU::new(memory)
+  let io_map = LinearMemory::new(0);
+  CPU::new(Box::new(memory), Box::new(io_map))
 }
 
 #[test]

@@ -1,14 +1,14 @@
 mod mem;
 mod i8086;
 
-use mem::Memory;
-use mem::LinearMemory;
+use mem::linear::LinearMemory;
 use i8086::cpu::CPU;
 
 fn create_cpu() -> CPU {
   // 1MB
-  let memory = mem::LinearMemory::new(1024 * 1024);
-  CPU::new(memory)
+  let memory = LinearMemory::new(1024 * 1024);
+  let io_map = LinearMemory::new(0);
+  CPU::new(Box::new(memory), Box::new(io_map))
 }
 
 fn main() {
