@@ -5,21 +5,21 @@ use super::Memory;
 pub struct PagedMemorySegment {
   start: usize,
   size: usize,
-  memory: Rc<RefCell<dyn Memory>>,
+  memory: Box<RefCell<dyn Memory>>,
 }
 
 pub struct PagedMemory<'a> {
   cache: RefCell<Option<&'a PagedMemorySegment>>,
-  get_item: &'a dyn Fn(usize) -> Option<&'a PagedMemorySegment>,
+  get_item: Box<dyn Fn(usize) -> Option<&'a PagedMemorySegment>>,
 }
 
 impl<'a> PagedMemory<'a> {
   pub fn new(
-    get_item: &'a dyn Fn(usize) -> Option<&'a PagedMemorySegment>,
+    get_item: Box<dyn Fn(usize) -> Option<&'a PagedMemorySegment>>,
   ) -> PagedMemory {
     PagedMemory {
       cache: RefCell::new(None),
-      get_item: get_item,
+      get_item,
     }
   }
   fn get_page(&self, address: usize) -> &RefCell<Option<&'a PagedMemorySegment>> {
@@ -31,7 +31,7 @@ impl<'a> PagedMemory<'a> {
       },
       _ => {},
     };
-    let get_item = self.get_item;
+    let get_item = &self.get_item;
     let entry = get_item(address);
     self.cache.replace(entry);
     &self.cache
@@ -54,5 +54,50 @@ impl<'a> Memory for PagedMemory<'a> {
     };
     let mut memory = segment.memory.borrow_mut();
     memory.write(address - segment.start, value)
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::mem::callback::*;
+  use super::*;
+  use std::cell::RefCell;
+
+  #[test]
+  fn test() {
+    let last = Rc::new(RefCell::new((0, 0, 0)));
+    let first_mem = {
+      let last_cp = last.clone();
+      let get_value = |addr: usize| -> u32 { addr as u32 };
+      let set_value = move |addr: usize, value: u32| -> () {
+        *last_cp.borrow_mut() = (0, addr, value);
+      };
+      PagedMemorySegment {
+        memory: Box::new(RefCell::new(
+          CallbackMemory::new(Box::new(get_value), Box::new(set_value)))),
+        start: 100,
+        size: 100,
+      }
+    };
+    let second_mem = {
+      let last_cp = last.clone();
+      let get_value = |addr: usize| -> u32 { addr as u32 };
+      let set_value = move |addr: usize, value: u32| -> () {
+        *last_cp.borrow_mut() = (1, addr, value);
+      };
+      PagedMemorySegment {
+        memory: Box::new(RefCell::new(
+          CallbackMemory::new(Box::new(get_value), Box::new(set_value)))),
+        start: 1000,
+        size: 100,
+      }
+    };
+    let mem = PagedMemory::new(Box::new(move |addr| {
+      match addr {
+        100..=200 => Some(&first_mem),
+        1000..=1100 => Some(&second_mem),
+        _ => None,
+      }
+    }));
   }
 }
