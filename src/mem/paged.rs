@@ -1,5 +1,6 @@
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::cmp::Ordering;
+use std::collections::BTreeMap;
 use super::Memory;
 
 pub struct PagedMemorySegment {
@@ -8,37 +9,38 @@ pub struct PagedMemorySegment {
   memory: Box<RefCell<dyn Memory>>,
 }
 
-pub struct PagedMemory<'a> {
-  cache: RefCell<Option<&'a PagedMemorySegment>>,
-  get_item: Box<dyn Fn(usize) -> Option<&'a PagedMemorySegment>>,
+impl Ord for PagedMemorySegment {
+  fn cmp(&self, other: &Self) -> Ordering {
+    self.start.cmp(&other.start)
+  }
 }
 
-impl<'a> PagedMemory<'a> {
-  pub fn new(
-    get_item: Box<dyn Fn(usize) -> Option<&'a PagedMemorySegment>>,
-  ) -> PagedMemory {
+pub struct PagedMemory {
+  cache: usize,
+  map: BTreeMap<usize, RefCell<PagedMemorySegment>>,
+}
+
+impl PagedMemory {
+  pub fn new() -> PagedMemory {
     PagedMemory {
-      cache: RefCell::new(None),
-      get_item,
+      cache: 0,
+      map: BTreeMap::new(),
     }
   }
-  fn get_page(&self, address: usize) -> &RefCell<Option<&'a PagedMemorySegment>> {
-    match *self.cache.borrow() {
-      Some(entry) => {
-        if entry.start >= address && entry.start + entry.size < address {
-          return &self.cache;
-        }
-      },
-      _ => {},
-    };
-    let get_item = &self.get_item;
-    let entry = get_item(address);
-    self.cache.replace(entry);
-    &self.cache
+  fn insert_page(&mut self, entry: PagedMemorySegment) -> () {
+    self.map.insert(entry.start, RefCell::new(entry));
+  }
+  fn remove_page(&mut self, start: usize) -> bool {
+    match self.map.remove(&start) {
+      Some(v) => true,
+      None => false,
+    }
+  }
+  fn get_page(&self, address: usize) -> &RefCell<PagedMemorySegment> {
   }
 }
 
-impl<'a> Memory for PagedMemory<'a> {
+impl<'a> Memory for PagedMemory {
   fn read(&self, address: usize) -> u32 {
     let segment = match *self.get_page(address).borrow() {
       Some(v) => v,
@@ -93,9 +95,11 @@ mod tests {
       }
     };
     let mem = PagedMemory::new(Box::new(move |addr| {
+      let moved_first_mem = first_mem;
+      let moved_second_mem = second_mem;
       match addr {
-        100..=200 => Some(&first_mem),
-        1000..=1100 => Some(&second_mem),
+        100..=200 => Some(&moved_first_mem),
+        1000..=1100 => Some(&moved_second_mem),
         _ => None,
       }
     }));
