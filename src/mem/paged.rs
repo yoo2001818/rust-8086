@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use super::Memory;
 
@@ -7,12 +6,6 @@ pub struct PagedMemorySegment {
   start: usize,
   size: usize,
   memory: Box<RefCell<dyn Memory>>,
-}
-
-impl Ord for PagedMemorySegment {
-  fn cmp(&self, other: &Self) -> Ordering {
-    self.start.cmp(&other.start)
-  }
 }
 
 pub struct PagedMemory {
@@ -32,26 +25,36 @@ impl PagedMemory {
   }
   fn remove_page(&mut self, start: usize) -> bool {
     match self.map.remove(&start) {
-      Some(v) => true,
+      Some(_) => true,
       None => false,
     }
   }
-  fn get_page(&self, address: usize) -> &RefCell<PagedMemorySegment> {
+  fn get_page(&self, address: usize) -> Option<&RefCell<PagedMemorySegment>> {
+    let mut range = self.map.range(..=address);
+    let item = match range.next_back() {
+      Some(v) => v,
+      None => return None,
+    };
+    let entry = item.1.borrow();
+    if entry.start <= address && address < entry.start + entry.size {
+      return Some(item.1);
+    }
+    return None;
   }
 }
 
 impl<'a> Memory for PagedMemory {
   fn read(&self, address: usize) -> u32 {
-    let segment = match *self.get_page(address).borrow() {
-      Some(v) => v,
+    let segment = match self.get_page(address) {
+      Some(v) => v.borrow(),
       None => return 0,
     };
     let memory = segment.memory.borrow();
     memory.read(address - segment.start)
   }
   fn write(&mut self, address: usize, value: u32) -> () {
-    let segment = match *self.get_page(address).borrow() {
-      Some(v) => v,
+    let segment = match self.get_page(address) {
+      Some(v) => v.borrow(),
       None => return,
     };
     let mut memory = segment.memory.borrow_mut();
@@ -64,6 +67,7 @@ mod tests {
   use crate::mem::callback::*;
   use super::*;
   use std::cell::RefCell;
+  use std::rc::Rc;
 
   #[test]
   fn test() {
@@ -94,14 +98,8 @@ mod tests {
         size: 100,
       }
     };
-    let mem = PagedMemory::new(Box::new(move |addr| {
-      let moved_first_mem = first_mem;
-      let moved_second_mem = second_mem;
-      match addr {
-        100..=200 => Some(&moved_first_mem),
-        1000..=1100 => Some(&moved_second_mem),
-        _ => None,
-      }
-    }));
+    let mut mem = PagedMemory::new();
+    mem.insert_page(first_mem);
+    mem.insert_page(second_mem);
   }
 }
