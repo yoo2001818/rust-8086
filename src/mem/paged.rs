@@ -101,5 +101,13 @@ mod tests {
     let mut mem = PagedMemory::new();
     mem.insert_page(first_mem);
     mem.insert_page(second_mem);
+    assert_eq!(mem.read(100), 0);
+    assert_eq!(mem.read(1050), 50);
+    mem.write(105, 0x5353);
+    assert_eq!(*last.borrow(), (0, 5, 0x5353));
+    mem.write(1030, 0x2525);
+    assert_eq!(*last.borrow(), (1, 30, 0x2525));
+    assert_eq!(mem.read(200), 0);
+    assert_eq!(mem.read(199), 99);
   }
 }
