@@ -7,6 +7,7 @@ global _main
   %%fail:
     mov ax, %2
     out 0x01, ax
+    hlt
   %%success:
 %endmacro
 _main:

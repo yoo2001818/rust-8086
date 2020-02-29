@@ -2,11 +2,12 @@ extern crate rust_8086;
 
 use rust_8086::i8086::cpu::CPU;
 use rust_8086::mem::linear::LinearMemory;
+use rust_8086::mem::paged::PagedMemory;
 
 fn create_cpu() -> CPU {
   // 1MB
   let memory = LinearMemory::new(1024 * 1024);
-  let io_map = LinearMemory::new(0);
+  let io_map = PagedMemory::new();
   CPU::new(Box::new(memory), Box::new(io_map))
 }
 
@@ -92,5 +93,15 @@ fn op_tests() {
   for (i, value) in test_data.into_iter().enumerate() {
     cpu.memory.write_u8(i + 0x100, *value);
   }
-  cpu.jmp(0, 0x100);
+  cpu.jmp(0x10, 0);
+  while cpu.running {
+    let cs = cpu.register.cs;
+    let ip = cpu.register.ip;
+    let op = match cpu.next_op() {
+      Some(v) => v,
+      None => break,
+    };
+    println!("{:04X}:{:04X} {:#?}", cs, ip, op);
+    cpu.exec_op(&op);
+  }
 }

@@ -25,11 +25,10 @@ impl CPU {
   }
 
   pub fn step(&mut self) -> Option<()> {
-    if self.running {
+    if !self.running {
       return None;
     }
     let op = self.next_op()?;
-    println!("{:#?}", op);
     self.exec_op(&op);
     Some(())
   }
@@ -41,6 +40,16 @@ impl CPU {
 
   pub fn hlt(&mut self) -> () {
     self.running = false;
+  }
+
+  pub fn unhlt(&mut self) -> () {
+    self.running = true;
+  }
+
+  pub fn run(&mut self) -> () {
+    while self.running {
+      self.step();
+    }
   }
 }
 
