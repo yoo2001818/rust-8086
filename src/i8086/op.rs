@@ -327,9 +327,9 @@ fn create_binary_op_byte(
 ) -> Option<Op> {
   let mod_rm = parse_mod_rm::<RegisterByteType>(second, iter)?;
   if inversed {
-    Some(Op::BinaryByte { op, src: mod_rm, dest: other })
-  } else {
     Some(Op::BinaryByte { op, src: other, dest: mod_rm })
+  } else {
+    Some(Op::BinaryByte { op, src: mod_rm, dest: other })
   }
 }
 
@@ -357,13 +357,13 @@ fn parse_binary_group_op(
     0 | 2 => {
       let second = iter.next()?;
       let reg = parse_reg::<RegisterByteType>((second >> 3) & 0x07)?;
-      let inversed = (first >> 1) & 0x01 == 1;
+      let inversed = first & 0x02 == 0;
       create_binary_op_byte(second, iter, op, reg, inversed)?
     }
     1 | 3 => {
       let second = iter.next()?;
       let reg = parse_reg::<RegisterWordType>((second >> 3) & 0x07)?;
-      let inversed = (first >> 1) & 0x01 == 1;
+      let inversed = first & 0x02 == 0;
       create_binary_op_word(second, iter, op, reg, inversed)?
     }
     4 => Op::BinaryByte {
@@ -1075,6 +1075,50 @@ fn test_parse_add() {
     );
   }
   {
+    let input: Vec<u8> = vec![0x8b, 0xE2];
+    assert_eq!(
+      parse_op(&mut input.into_iter()),
+      Some(Op::BinaryWord {
+        op: OpBinaryOp::Mov,
+        src: Operand::Register(RegisterWordType::Dx),
+        dest: Operand::Register(RegisterWordType::Sp),
+      }),
+    );
+  }
+  {
+    let input: Vec<u8> = vec![0x89, 0xE2];
+    assert_eq!(
+      parse_op(&mut input.into_iter()),
+      Some(Op::BinaryWord {
+        op: OpBinaryOp::Mov,
+        src: Operand::Register(RegisterWordType::Sp),
+        dest: Operand::Register(RegisterWordType::Dx),
+      }),
+    );
+  }
+  {
+    let input: Vec<u8> = vec![0x89, 0xc3];
+    assert_eq!(
+      parse_op(&mut input.into_iter()),
+      Some(Op::BinaryWord {
+        op: OpBinaryOp::Mov,
+        src: Operand::Register(RegisterWordType::Ax),
+        dest: Operand::Register(RegisterWordType::Bx),
+      }),
+    );
+  }
+  {
+    let input: Vec<u8> = vec![0x88, 0xc3];
+    assert_eq!(
+      parse_op(&mut input.into_iter()),
+      Some(Op::BinaryByte {
+        op: OpBinaryOp::Mov,
+        src: Operand::Register(RegisterByteType::Al),
+        dest: Operand::Register(RegisterByteType::Bl),
+      }),
+    );
+  }
+  {
     let input: Vec<u8> = vec![0x06];
     assert_eq!(
       parse_op(&mut input.into_iter()),
@@ -1085,13 +1129,24 @@ fn test_parse_add() {
     );
   }
   {
+    let input: Vec<u8> = vec![0x01, 0xd4];
+    assert_eq!(
+      parse_op(&mut input.into_iter()),
+      Some(Op::BinaryWord {
+        op: OpBinaryOp::Add,
+        src: Operand::Register(RegisterWordType::Dx),
+        dest: Operand::Register(RegisterWordType::Sp),
+      }),
+    );
+  }
+  {
     let input: Vec<u8> = vec![0x31, 0x80, 0xab, 0xcd];
     assert_eq!(
       parse_op(&mut input.into_iter()),
       Some(Op::BinaryWord {
         op: OpBinaryOp::Xor,
-        src: Operand::Address(AddressType::BxSi, 0xcdab),
-        dest: Operand::Register(RegisterWordType::Ax),
+        src: Operand::Register(RegisterWordType::Ax),
+        dest: Operand::Address(AddressType::BxSi, 0xcdab),
       }),
     );
   }

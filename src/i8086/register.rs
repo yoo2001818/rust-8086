@@ -1,4 +1,5 @@
-#[derive(Debug)]
+use std::fmt;
+
 pub struct Register {
   pub ax: u16,
   pub bx: u16,
@@ -14,6 +15,20 @@ pub struct Register {
   pub ds: u16,
   pub es: u16,
   pub flags: u16,
+}
+
+impl fmt::Debug for Register {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "ax: {:04X} bx: {:04X} cx: {:04X} dx: {:04X}\n\
+      sp: {:04X} bp: {:04X} si: {:04X} di: {:04X}\n\
+      cs: {:04X} ss: {:04X} ds: {:04X} es: {:04X}\n\
+      fl: {:04X} ip: {:04X}",
+      self.ax, self.bx, self.cx, self.dx,
+      self.sp, self.bp, self.si, self.di,
+      self.cs, self.ss, self.ds, self.es,
+      self.flags, self.ip,
+    )
+  }
 }
 
 impl Register {
