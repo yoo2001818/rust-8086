@@ -11,7 +11,7 @@ mov WORD bx, [bx]
   call %%fail
   %%fail:
     mov ax, %2
-    out 0x01, ax
+    out 0x00, ax
     hlt
   %%success:
 %endmacro

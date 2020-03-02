@@ -1,19 +1,23 @@
 extern crate rust_8086;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use rust_8086::i8086::cpu::CPU;
 use rust_8086::mem::linear::LinearMemory;
-use rust_8086::mem::paged::PagedMemory;
+use rust_8086::mem::paged::*;
+use rust_8086::mem::callback::CallbackMemory;
+use rust_8086::mem::Memory;
 
-fn create_cpu() -> CPU {
+fn create_cpu(io_map: Box<dyn Memory>) -> CPU {
   // 1MB
   let memory = LinearMemory::new(1024 * 1024);
-  let io_map = PagedMemory::new();
-  CPU::new(Box::new(memory), Box::new(io_map))
+  CPU::new(Box::new(memory), io_map)
 }
 
 #[test]
 fn op_mov_imm() {
-  let mut cpu = create_cpu();
+  let mut cpu = create_cpu(Box::new(PagedMemory::new()));
   let input: Vec<u8> = vec![
     // mov ax, 0x8086
     0xb8, 0x86, 0x80,
@@ -36,7 +40,7 @@ fn op_mov_imm() {
 
 #[test]
 fn op_mov_mem() {
-  let mut cpu = create_cpu();
+  let mut cpu = create_cpu(Box::new(PagedMemory::new()));
   let input: Vec<u8> = vec![
     // mov [0x5353], 0xabcd,
     0xc7, 0x06, 0x53, 0x53, 0xcd, 0xab,
@@ -67,7 +71,7 @@ fn op_mov_mem() {
 
 #[test]
 fn op_push() {
-  let mut cpu = create_cpu();
+  let mut cpu = create_cpu(Box::new(PagedMemory::new()));
   let input: Vec<u8> = vec![
     // mov [0x5353], 0xabcd,
     0xc7, 0x06, 0x53, 0x53, 0xcd, 0xab,
@@ -88,21 +92,31 @@ fn op_push() {
 
 #[test]
 fn op_tests() {
-  let mut cpu = create_cpu();
+  let failed_data: Rc<RefCell<Option<u32>>> =
+    Rc::new(RefCell::new(None));
+  let mut io_map = PagedMemory::new();
+  {
+    let failed_data_dup = failed_data.clone();
+    let io_handler = CallbackMemory::new(
+      Box::new(|_| 0),
+      Box::new(move |_, value| {
+        *failed_data_dup.borrow_mut() = Some(value);
+      }),
+    );
+    io_map.insert_page(
+      PagedMemorySegment::new(0, 4, Box::new(RefCell::new(io_handler))));
+  }
+  let mut cpu = create_cpu(Box::new(io_map));
   let test_data = include_bytes!("tests.com");
   for (i, value) in test_data.into_iter().enumerate() {
     cpu.memory.write_u8(i + 0x100, *value);
   }
   cpu.jmp(0x10, 0);
-  while cpu.running {
-    let cs = cpu.register.cs;
-    let ip = cpu.register.ip;
-    let op = match cpu.next_op() {
-      Some(v) => v,
-      None => break,
-    };
-    println!("{:04X}:{:04X} {:#?}", cs, ip, op);
-    cpu.exec_op(&op);
-    println!("{:#?}", &cpu.register);
-  }
+  cpu.run();
+  match *failed_data.borrow() {
+    Some(err) => {
+      panic!("Test failed at {:08X}\n{:#?}", err, &cpu.register);
+    },
+    None => (),
+  };
 }

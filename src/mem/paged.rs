@@ -8,6 +8,16 @@ pub struct PagedMemorySegment {
   memory: Box<RefCell<dyn Memory>>,
 }
 
+impl PagedMemorySegment {
+  pub fn new(
+    start: usize,
+    size: usize,
+    memory: Box<RefCell<dyn Memory>>,
+  ) -> PagedMemorySegment {
+    PagedMemorySegment { start, size, memory }
+  }
+}
+
 pub struct PagedMemory {
   cache: usize,
   map: BTreeMap<usize, RefCell<PagedMemorySegment>>,
@@ -20,16 +30,16 @@ impl PagedMemory {
       map: BTreeMap::new(),
     }
   }
-  fn insert_page(&mut self, entry: PagedMemorySegment) -> () {
+  pub fn insert_page(&mut self, entry: PagedMemorySegment) -> () {
     self.map.insert(entry.start, RefCell::new(entry));
   }
-  fn remove_page(&mut self, start: usize) -> bool {
+  pub fn remove_page(&mut self, start: usize) -> bool {
     match self.map.remove(&start) {
       Some(_) => true,
       None => false,
     }
   }
-  fn get_page(&self, address: usize) -> Option<&RefCell<PagedMemorySegment>> {
+  pub fn get_page(&self, address: usize) -> Option<&RefCell<PagedMemorySegment>> {
     let mut range = self.map.range(..=address);
     let item = match range.next_back() {
       Some(v) => v,
