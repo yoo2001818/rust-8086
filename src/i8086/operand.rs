@@ -46,7 +46,13 @@ impl CPU {
   pub fn get_segment_addr(&self, segment: &Option<RegisterWordType>) -> usize {
     (match segment {
       Some(reg) => u16::read_reg(&self.register, reg),
-      None => self.register.ds,
+      None => {
+        let selector = self.segment_selector;
+        match selector {
+          Some(reg) => u16::read_reg(&self.register, reg),
+          None => self.register.ds,
+        }
+      },
     } as usize) << 4
   }
   pub fn get_operand_with_seg<T, R>(

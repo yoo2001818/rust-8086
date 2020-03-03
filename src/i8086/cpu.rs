@@ -1,6 +1,7 @@
 use crate::mem::Memory;
 use crate::mem::MemoryValue;
 use super::register::Register;
+use super::register::RegisterWordType;
 use super::op::Op;
 use super::op::parse_op;
 
@@ -8,12 +9,19 @@ pub struct CPU {
   pub memory: Box<dyn Memory>,
   pub io_ports: Box<dyn Memory>,
   pub register: Register,
+  pub segment_selector: Option<RegisterWordType>,
   pub running: bool,
 }
 
 impl CPU {
   pub fn new(memory: Box<dyn Memory>, io_ports: Box<dyn Memory>) -> Self {
-    CPU { memory, io_ports, register: Register::new(), running: true }
+    CPU {
+      memory,
+      io_ports,
+      register: Register::new(),
+      segment_selector: None,
+      running: true,
+    }
   }
 
   pub fn iter(&mut self) -> CPUIterator {

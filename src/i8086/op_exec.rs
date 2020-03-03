@@ -311,7 +311,7 @@ fn exec_binary<T, R>(
       cpu.set_operand(dest, result);
     },
     OpBinaryOp::Cmp => {
-      let (result, (flag_clear, flag_set)) =
+      let (_, (flag_clear, flag_set)) =
         OperandOpValue::sub(src_val, dest_val, false);
       cpu.blit_flags(flag_clear, flag_set);
     },
@@ -682,7 +682,11 @@ impl CPU {
       Op::RetInterImm(value) => {},
       Op::Int(value) => {},
       Op::Esc(code, operand) => {},
-      Op::Segment(seg) => {},
+      Op::Segment(seg) => {
+        self.segment_selector = Some(*seg);
+        return;
+      },
     }
+    self.segment_selector = None;
   }
 }
