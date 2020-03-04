@@ -16,6 +16,8 @@ mov WORD bx, [bx]
   %%success:
 %endmacro
 _main:
+%include "segment.asm"
+%include "mov.asm"
 %include "push.asm"
 end:
 hlt

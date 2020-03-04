@@ -111,7 +111,7 @@ fn op_tests() {
   for (i, value) in test_data.into_iter().enumerate() {
     cpu.memory.write_u8(i + 0x100, *value);
   }
-  cpu.jmp(0x10, 0);
+  cpu.jmp(0, 0x100);
   cpu.run();
   match *failed_data.borrow() {
     Some(err) => {

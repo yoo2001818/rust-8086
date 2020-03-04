@@ -49,7 +49,7 @@ impl CPU {
       None => {
         let selector = self.segment_selector;
         match selector {
-          Some(reg) => u16::read_reg(&self.register, reg),
+          Some(reg) => u16::read_reg(&self.register, &reg),
           None => self.register.ds,
         }
       },
