@@ -44,7 +44,7 @@ push WORD [bx]
 mov dx, sp
 cmp dx, 0xfff9
 assert e, 0x0080
-cmp WORD [0xfff9], 0x2222
+cmp WORD [ss:0xfff9], 0x2222
 assert e, 0x0081
 push_test_9:
 ; Validate PUSH R/M16
@@ -52,13 +52,14 @@ push WORD [0xabcd]
 mov dx, sp
 cmp dx, 0xfff7
 assert e, 0x0090
-cmp WORD [0xfff7], 0x2222
+cmp WORD [ss:0xfff7], 0x2222
 assert e, 0x0091
 push_test_10:
 ; Validate PUSH SEG
 push cs
+mov bx, cs
 mov dx, sp
 cmp dx, 0xfff5
 assert e, 0x00a0
-cmp WORD [0xfff5], 0x0010
+cmp WORD [ss:0xfff5], bx
 assert e, 0x00a1

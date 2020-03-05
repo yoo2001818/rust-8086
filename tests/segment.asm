@@ -2,42 +2,34 @@
 ; code segment.
 ; Therefore, we have to check if segment registers are working correctly first.
 seg_test_1:
-; We expect code segment to be located in 0000h.... Though it doesn't matter.
-; Test if data segment is valid.
 mov ax, 0x2000
-push ax 
-pop ss
+mov ss, ax
+; Test if data segment is valid.
 mov ax, 0x1000
-push ax
-pop ds
+mov ds, ax
 mov WORD [0x0010], 0x5353
 mov ax, 0x1001
-push ax
-pop ds
-cmp WORD [0x0001], 0x5353
+mov ds, ax
+mov WORD bx, [0x0000]
+cmp WORD [0x0000], 0x5353
 assert e, 0x0010
 seg_test_2:
 ; Test if segment selector works.
 mov ax, 0x1010
-push ax
-pop es
+mov es, ax
 mov WORD [es:0x0010], 0x5353
 mov ax, 0x1011
-push ax
-pop es
-cmp WORD [es:0x0001], 0x5353
+mov es, ax
+cmp WORD [es:0x0000], 0x5353
 assert e, 0x0020
 seg_test_3:
 ; Test if segment selector works - 2.
 mov ax, 0x1000
-push ax
-pop ds
+mov ds, ax
 mov ax, 0x1001
-push ax
-pop ss
+mov ss, ax
 mov ax, 0x1002
-push ax
-pop es
+mov es, ax
 mov WORD [ds:0x0000], 0xaaaa
 mov WORD [ds:0x0010], 0xbbbb
 mov WORD [ds:0x0020], 0xcccc
