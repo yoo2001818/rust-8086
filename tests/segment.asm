@@ -1,3 +1,4 @@
+; Test set 0x0000
 ; Before testing anything, we need to make sure we're not overwritting over
 ; code segment.
 ; Therefore, we have to check if segment registers are working correctly first.

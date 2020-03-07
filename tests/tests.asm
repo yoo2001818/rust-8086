@@ -1,6 +1,10 @@
 CPU 8086
 section .data
 global _main 
+%macro startdebug 0
+  mov ax, 0x0001
+  out 0x04, ax
+%endmacro
 %macro assert 2
   j%+1 %%success
   call %%fail

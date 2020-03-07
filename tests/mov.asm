@@ -1,3 +1,4 @@
+; Test set 0x0100
 ; 1. First, test imm -> reg, which has opcode 0xB0 - 0xBF.
 mov_test_1:
 mov al, 0xab
@@ -67,12 +68,30 @@ mov ax, [0xabcd]
 cmp ax, 0xbaba
 assert e, 0x0130
 mov [0xfaff], ax
-cmp [0xfaff], 0xbaba
+cmp word [0xfaff], 0xbaba
 assert e, 0x0131
 mov word [0xfafa], 0x0ff1
 mov al, [0xfafa]
 cmp al, 0xf1
 assert e, 0x0132
 mov [0xfaff], al
-cmp [0xfaff], 0xf1
+cmp byte [0xfaff], 0xf1
 assert e, 0x0133
+mov_test_4:
+; Test r/m <-> reg
+mov ax, 0xabcd
+mov bx, ax
+cmp bx, 0xabcd
+assert e, 0x0140
+startdebug
+mov [0xfaff], bx
+mov cx, [0xfaff]
+cmp cx, 0xabcd
+assert e, 0x0141
+mov_test_5:
+; Test r/m <-> segreg
+mov word [0xfaff], 0xaaaa
+mov es, [0xfaff]
+mov ax, es
+cmp ax, 0xaaaa
+assert e, 0x0150
