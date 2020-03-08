@@ -94,6 +94,7 @@ fn op_push() {
 fn op_tests() {
   let failed_data: Rc<RefCell<Option<u32>>> =
     Rc::new(RefCell::new(None));
+  let debugging: Rc<RefCell<bool>> = Rc::new(RefCell::new(false));
   let mut io_map = PagedMemory::new();
   {
     let failed_data_dup = failed_data.clone();
@@ -104,7 +105,18 @@ fn op_tests() {
       }),
     );
     io_map.insert_page(
-      PagedMemorySegment::new(0, 4, Box::new(RefCell::new(io_handler))));
+      PagedMemorySegment::new(0, 1, Box::new(RefCell::new(io_handler))));
+  }
+  {
+    let debugging_dup = debugging.clone();
+    let io_handler = CallbackMemory::new(
+      Box::new(|_| 0),
+      Box::new(move |_, _| {
+        *debugging_dup.borrow_mut() = true;
+      }),
+    );
+    io_map.insert_page(
+      PagedMemorySegment::new(1, 1, Box::new(RefCell::new(io_handler))));
   }
   let mut cpu = create_cpu(Box::new(io_map));
   let test_data = include_bytes!("tests.com");
@@ -112,7 +124,16 @@ fn op_tests() {
     cpu.memory.write_u8(i + 0x100, *value);
   }
   cpu.jmp(0, 0x100);
-  cpu.run();
+  while cpu.running {
+    let op = match cpu.next_op() {
+      Some(v) => v,
+      None => break,
+    };
+    cpu.exec_op(&op);
+    if *debugging.borrow() {
+      println!("{:#?} {:#?}", &op, &cpu.register);
+    }
+  }
   match *failed_data.borrow() {
     Some(err) => {
       panic!("Test failed at {:08X}\n{:#?}", err, &cpu.register);

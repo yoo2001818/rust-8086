@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::fmt;
 use super::Memory;
 
 pub struct PagedMemorySegment {
@@ -15,6 +16,12 @@ impl PagedMemorySegment {
     memory: Box<RefCell<dyn Memory>>,
   ) -> PagedMemorySegment {
     PagedMemorySegment { start, size, memory }
+  }
+}
+
+impl fmt::Debug for PagedMemorySegment {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "{:08X}, {:08X}", self.start, self.size)
   }
 }
 
