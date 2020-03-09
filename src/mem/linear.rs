@@ -13,9 +13,11 @@ impl LinearMemory {
 
 impl Memory for LinearMemory {
   fn read(&self, address: usize) -> u32 {
+    println!("Read {:08X} {:04X}", address, self.words[address]);
     self.words[address]
   }
   fn write(&mut self, address: usize, value: u32) -> () {
+    println!("Write {:08X} {:04X}", address, value);
     self.words[address] = value
   }
 }
@@ -60,5 +62,18 @@ mod tests {
     assert_eq!(u16::read_mem(&mem, 5), 0xcdef);
     assert_eq!(u16::read_mem(&mem, 6), 0xabcd);
     assert_eq!(u16::read_mem(&mem, 7), 0x00ab);
+  }
+
+  #[test]
+  fn test_u16_write() {
+    let mut mem = LinearMemory::new(1024);
+    mem.write(1, 0xFFFFFFFF);
+    mem.write(2, 0xFFFFFFFF);
+    u16::write_mem(&mut mem, 0, 0xabcd);
+    u16::write_mem(&mut mem, 2, 0xbeef);
+    u16::write_mem(&mut mem, 7, 0xabcd);
+    assert_eq!(mem.read(0), 0xBEEFABCD);
+    assert_eq!(mem.read(1), 0xCDFFFFFF);
+    assert_eq!(mem.read(2), 0xFFFFFFAB);
   }
 }
