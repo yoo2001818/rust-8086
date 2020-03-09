@@ -81,6 +81,7 @@ pub trait Memory {
         word |= (value as u32) << 16;
       },
       3 => {
+        word &= 0x00ffffff;
         word |= ((value as u32) & 0xff) << 24;
         let mut next_word = self.read(word_addr + 1) as u32;
         next_word &= 0xffffff00;

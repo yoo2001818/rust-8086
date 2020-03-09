@@ -13,11 +13,9 @@ impl LinearMemory {
 
 impl Memory for LinearMemory {
   fn read(&self, address: usize) -> u32 {
-    println!("Read {:08X} {:04X}", address, self.words[address]);
     self.words[address]
   }
   fn write(&mut self, address: usize, value: u32) -> () {
-    println!("Write {:08X} {:04X}", address, value);
     self.words[address] = value
   }
 }

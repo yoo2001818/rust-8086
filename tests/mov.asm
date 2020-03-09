@@ -83,7 +83,6 @@ mov ax, 0xabcd
 mov bx, ax
 cmp bx, 0xabcd
 assert e, 0x0140
-startdebug
 mov [0xfaff], bx
 mov cx, [0xfaff]
 cmp cx, 0xabcd
