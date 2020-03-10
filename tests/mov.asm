@@ -161,11 +161,11 @@ assert e, 0x016b
 mov word [bx+0x5000], 0x0009
 cmp word [0x5001], 0x0009
 assert e, 0x016c
-; Then with d8 with negative value. Ouch.
+; Then with d8 with negative value.
 mov word [bp+si-0x50], 0x0001
-cmp word [0xffa6], 0x0001
+cmp word [0xffb6], 0x0001
 assert e, 0x016d
-; Then with d16 with negative value. Ouch.
-mov word [bp+di-0x50], 0x0001
-cmp word [0xaffa], 0x0001
+; Then with d16 with negative value.
+mov word [bp+di-0x5000], 0x0002
+cmp word [0xb00a], 0x0002
 assert e, 0x016e

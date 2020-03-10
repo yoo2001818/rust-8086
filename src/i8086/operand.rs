@@ -20,7 +20,7 @@ pub enum AddressType {
 #[derive(Debug)]
 pub enum Operand<T: RegisterType> {
   Register(T),
-  Address(AddressType, u16),
+  Address(AddressType, i16),
   Direct(u16),
   ImmWord(u16),
   ImmByte(u8),
@@ -30,7 +30,7 @@ pub type OperandWord = Operand<RegisterWordType>;
 pub type OperandByte = Operand<RegisterByteType>;
 
 impl CPU {
-  pub fn get_offset(&self, addr_type: &AddressType, offset: u16) -> u16 {
+  pub fn get_offset(&self, addr_type: &AddressType, offset: i16) -> u16 {
     let base_offset = match addr_type {
       AddressType::BxSi => self.register.bx + self.register.si,
       AddressType::BxDi => self.register.bx + self.register.di,
@@ -41,7 +41,7 @@ impl CPU {
       AddressType::Bp => self.register.bp,
       AddressType::Bx => self.register.bx,
     };
-    base_offset + offset
+    base_offset.wrapping_add(offset as u16)
   }
   pub fn get_segment_addr(&self, segment: &Option<RegisterWordType>) -> usize {
     (match segment {

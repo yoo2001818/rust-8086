@@ -304,9 +304,9 @@ fn parse_mod_rm<T: RegisterType + RegisterModRmParsable>(
       }
     },
     1 => Operand::Address(
-      AddressType::from_value(rm_val)?, iter.next()? as u16),
+      AddressType::from_value(rm_val)?, iter.next()? as i8 as i16),
     2 => Operand::Address(
-      AddressType::from_value(rm_val)?, iter_next_u16(iter)?),
+      AddressType::from_value(rm_val)?, iter_next_u16(iter)? as i16),
     3 => Operand::Register(T::from_value(rm_val)?),
     _ => return None,
   })
@@ -1146,7 +1146,7 @@ fn test_parse_add() {
       Some(Op::BinaryWord {
         op: OpBinaryOp::Xor,
         src: Operand::Register(RegisterWordType::Ax),
-        dest: Operand::Address(AddressType::BxSi, 0xcdab),
+        dest: Operand::Address(AddressType::BxSi, 0xcdab as u16 as i16),
       }),
     );
   }
@@ -1157,7 +1157,7 @@ fn test_parse_add() {
       Some(Op::BinaryByte {
         op: OpBinaryOp::Add,
         src: Operand::ImmByte(0x25),
-        dest: Operand::Address(AddressType::BxSi, 0xcdab),
+        dest: Operand::Address(AddressType::BxSi, 0xcdab as u16 as i16),
       }),
     );
   }
