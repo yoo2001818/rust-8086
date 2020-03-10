@@ -259,7 +259,7 @@ pub enum Op {
   ShiftByte { op: OpShiftOp,shift_type: OpShiftType, dest: OperandByte },
   ShiftWord { op: OpShiftOp,shift_type: OpShiftType, dest: OperandWord },
   Nullary(OpNullaryOp),
-  CondJmp { op: OpCondJmpOp, offset: u8 },
+  CondJmp { op: OpCondJmpOp, offset: i8 },
   InFixed(OpSize),
   InVariable(OpSize, u8),
   OutFixed(OpSize),
@@ -517,7 +517,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         7 => OpCondJmpOp::Ja,
         _ => return None,
       };
-      Op::CondJmp { op: jmp_type, offset: second }
+      Op::CondJmp { op: jmp_type, offset: second as i8 }
     },
     0x78 => {
       let second = iter.next()?;
@@ -532,7 +532,7 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
         7 => OpCondJmpOp::Jg,
         _ => return None,
       };
-      Op::CondJmp { op: jmp_type, offset: second }
+      Op::CondJmp { op: jmp_type, offset: second as i8 }
     },
     0x80 => {
       // ADD, OR, ADC, SBB, AND, SUB, XOR, CMP
@@ -915,9 +915,9 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
             1 => OpCondJmpOp::Loope,
             2 => OpCondJmpOp::Loop,
             3 => OpCondJmpOp::Jcxz,
-            _ => panic!("This should not happen"),
+            _ => return None,
           };
-          Op::CondJmp { op: jmp_type, offset: second }
+          Op::CondJmp { op: jmp_type, offset: second as i8 }
         },
         4 => Op::InVariable(OpSize::Byte, iter.next()?),
         5 => Op::InVariable(OpSize::Word, iter.next()?),

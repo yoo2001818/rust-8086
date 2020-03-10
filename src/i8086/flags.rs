@@ -18,4 +18,7 @@ pub const PF: u16 = 0x0004;
 pub const AF: u16 = 0x0010;
 pub const ZF: u16 = 0x0040;
 pub const SF: u16 = 0x0080;
+pub const TF: u16 = 0x0100;
+pub const IF: u16 = 0x0200;
+pub const DF: u16 = 0x0400;
 pub const OF: u16 = 0x0800;

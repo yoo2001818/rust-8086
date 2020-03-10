@@ -509,10 +509,29 @@ fn exec_shift<T, R>(
 fn exec_nullary(cpu: &mut CPU, op: &OpNullaryOp) -> () {
   match op {
     OpNullaryOp::Xlat => {},
-    OpNullaryOp::Lahf => {},
-    OpNullaryOp::Sahf => {},
-    OpNullaryOp::Pushf => {},
-    OpNullaryOp::Popf => {},
+    OpNullaryOp::Lahf => {
+      let flags = (cpu.get_flags() & 0xff) as u8;
+      u8::write_reg(&mut cpu.register, &RegisterByteType::Ah, flags);
+    },
+    OpNullaryOp::Sahf => {
+      let flags = u8::read_reg(&mut cpu.register, &RegisterByteType::Ah);
+      cpu.blit_flags(0xff, flags as u16);
+    },
+    OpNullaryOp::Pushf => {
+      // TODO Is this really good idea?
+      cpu.register.sp -= 2;
+      cpu.set_operand_with_seg::<u16, RegisterWordType>(
+        &Operand::Direct(cpu.register.sp),
+        &Some(RegisterWordType::Ss),
+        cpu.get_flags());
+    },
+    OpNullaryOp::Popf => {
+      cpu.register.sp += 2;
+      let result = cpu.get_operand_with_seg::<u16, RegisterWordType>(
+        &Operand::Direct(cpu.register.sp),
+        &Some(RegisterWordType::Ss));
+      cpu.set_flags(result);
+    },
     OpNullaryOp::Aaa => {},
     OpNullaryOp::Daa => {},
     OpNullaryOp::Aas => {},
@@ -525,13 +544,28 @@ fn exec_nullary(cpu: &mut CPU, op: &OpNullaryOp) -> () {
     OpNullaryOp::Repz => {},
     OpNullaryOp::Into => {},
     OpNullaryOp::Iret => {},
-    OpNullaryOp::Clc => {},
-    OpNullaryOp::Cmc => {},
-    OpNullaryOp::Stc => {},
-    OpNullaryOp::Cld => {},
-    OpNullaryOp::Std => {},
-    OpNullaryOp::Cli => {},
-    OpNullaryOp::Sti => {},
+    OpNullaryOp::Clc => {
+      cpu.blit_flags(CF, 0);
+    },
+    OpNullaryOp::Cmc => {
+      let has_cf = cpu.get_flags() & CF != 0;
+      cpu.blit_flags(CF, if has_cf { 0 } else { CF });
+    },
+    OpNullaryOp::Stc => {
+      cpu.blit_flags(CF, CF);
+    },
+    OpNullaryOp::Cld => {
+      cpu.blit_flags(DF, 0);
+    },
+    OpNullaryOp::Std => {
+      cpu.blit_flags(DF, DF);
+    },
+    OpNullaryOp::Cli => {
+      cpu.blit_flags(IF, 0);
+    },
+    OpNullaryOp::Sti => {
+      cpu.blit_flags(IF, IF);
+    },
     OpNullaryOp::Hlt => {
       cpu.running = false;
     },
@@ -540,7 +574,7 @@ fn exec_nullary(cpu: &mut CPU, op: &OpNullaryOp) -> () {
   }
 }
 
-fn exec_cond_jmp(cpu: &mut CPU, op: &OpCondJmpOp, offset: u8) -> () {
+fn exec_cond_jmp(cpu: &mut CPU, op: &OpCondJmpOp, offset: i8) -> () {
   let flags = cpu.get_flags();
   let matched = match op {
     OpCondJmpOp::Jo => flags & OF != 0,
@@ -575,7 +609,8 @@ fn exec_cond_jmp(cpu: &mut CPU, op: &OpCondJmpOp, offset: u8) -> () {
     },
   };
   if matched {
-    cpu.register.ip = ((cpu.register.ip as i16) + (offset as i8 as i16)) as u16;
+    cpu.register.ip =
+      (cpu.register.ip as i16).wrapping_sub(offset as i16) as u16;
   }
 }
 
