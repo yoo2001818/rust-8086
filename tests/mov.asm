@@ -87,6 +87,15 @@ mov [0xfaff], bx
 mov cx, [0xfaff]
 cmp cx, 0xabcd
 assert e, 0x0141
+; 8bit testing
+mov al, 0xab
+mov bl, al
+cmp bl, 0xab
+assert e, 0x0142
+mov byte [0xfaff], al
+mov byte cl, [0xfaff]
+cmp cl, 0xab
+assert e, 0x0143
 mov_test_5:
 ; Test r/m <-> segreg
 mov word [0xfaff], 0xaaaa
@@ -94,3 +103,69 @@ mov es, [0xfaff]
 mov ax, es
 cmp ax, 0xaaaa
 assert e, 0x0150
+mov_test_6:
+; Shift the data segment...
+mov ax, 0x1000
+mov ds, ax
+; Test every R/M combinations possible. Which isn't a lot actually.
+; bx+si
+; bx+di
+; bp+si
+; bp+di
+; si
+; di
+; direct or bp
+; bx
+mov bx, 0x0001
+mov bp, 0x0002
+mov si, 0x0004
+mov di, 0x0008
+mov word [bx+si], 0x0001
+cmp word [0x0005], 0x0001
+assert e, 0x0160
+mov word [bx+di], 0x0002
+cmp word [0x0009], 0x0002
+assert e, 0x0161
+mov word [bp+si], 0x0003
+cmp word [0x0006], 0x0003
+assert e, 0x0162
+mov word [bp+di], 0x0004
+cmp word [0x000a], 0x0004
+assert e, 0x0163
+mov word [si], 0x0005
+cmp word [0x0004], 0x0005
+assert e, 0x0164
+mov word [di], 0x0006
+cmp word [0x0008], 0x0006
+assert e, 0x0165
+mov word [0x0002], 0x0007
+cmp word [0x0002], 0x0007
+assert e, 0x0166
+mov word [bx], 0x0008
+cmp word [0x0001], 0x0008
+assert e, 0x0167
+; Then with d8.
+mov word [bx+si+0x50], 0x0001
+cmp word [0x0055], 0x0001
+assert e, 0x0168
+mov word [bx+di+0x50], 0x0002
+cmp word [0x0059], 0x0002
+assert e, 0x0169
+mov word [bp+0x50], 0x0007
+cmp word [0x0052], 0x0007
+assert e, 0x016a
+mov word [bx+0x50], 0x0008
+cmp word [0x0051], 0x0008
+assert e, 0x016b
+; ...d16
+mov word [bx+0x5000], 0x0009
+cmp word [0x5001], 0x0009
+assert e, 0x016c
+; Then with d8 with negative value. Ouch.
+mov word [bp+si-0x50], 0x0001
+cmp word [0xffa6], 0x0001
+assert e, 0x016d
+; Then with d16 with negative value. Ouch.
+mov word [bp+di-0x50], 0x0001
+cmp word [0xaffa], 0x0001
+assert e, 0x016e
