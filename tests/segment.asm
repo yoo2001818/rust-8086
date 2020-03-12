@@ -14,7 +14,6 @@ mov ds, ax
 mov WORD bx, [0x0000]
 cmp WORD [0x0000], 0x5353
 assert e, 0x0010
-hlt
 seg_test_2:
 ; Test if segment selector works.
 mov ax, 0x1010

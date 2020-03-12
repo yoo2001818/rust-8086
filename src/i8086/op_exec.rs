@@ -58,7 +58,9 @@ impl OperandOpValue for u8 {
     ))
   }
   fn sub(src: u8, dest: u8, carry: bool) -> (u8, Flags) {
-    let new_src = (-(src as i8) - (if carry { 1 } else { 0 })) as u8;
+    let new_src =
+      ((src as i8).wrapping_add(if carry { 1 } else { 0 }))
+        .wrapping_neg() as u8;
     let result = dest.wrapping_add(new_src);
     let cf = result > new_src && result > dest;
     let af = (!(new_src ^ dest)) & (new_src ^ result) & 0x8 != 0;
@@ -374,10 +376,10 @@ fn exec_unary<T, R>(
     },
     OpUnaryOp::Pop => {
       // TODO Is this really good idea?
-      cpu.register.sp += T::get_stack_size();
       let result = cpu.get_operand_with_seg::<T, R>(
         &Operand::Direct(cpu.register.sp),
         &Some(RegisterWordType::Ss));
+      cpu.register.sp += T::get_stack_size();
       cpu.set_operand(dest, result);
     },
     OpUnaryOp::Inc => {
@@ -526,10 +528,10 @@ fn exec_nullary(cpu: &mut CPU, op: &OpNullaryOp) -> () {
         cpu.get_flags());
     },
     OpNullaryOp::Popf => {
-      cpu.register.sp += 2;
       let result = cpu.get_operand_with_seg::<u16, RegisterWordType>(
         &Operand::Direct(cpu.register.sp),
         &Some(RegisterWordType::Ss));
+      cpu.register.sp += 2;
       cpu.set_flags(result);
     },
     OpNullaryOp::Aaa => {},
@@ -610,7 +612,7 @@ fn exec_cond_jmp(cpu: &mut CPU, op: &OpCondJmpOp, offset: i8) -> () {
   };
   if matched {
     cpu.register.ip =
-      (cpu.register.ip as i16).wrapping_sub(offset as i16) as u16;
+      (cpu.register.ip as i16).wrapping_add(offset as i16) as u16;
   }
 }
 

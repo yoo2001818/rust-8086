@@ -17,9 +17,9 @@ global _main
 _main:
 startdebug
 %include "segment.asm"
-; %include "mov.asm"
-; %include "push.asm"
-; %include "flags.asm"
-; %include "binary.asm"
+%include "mov.asm"
+%include "push.asm"
+%include "flags.asm"
+%include "binary.asm"
 end:
 hlt
