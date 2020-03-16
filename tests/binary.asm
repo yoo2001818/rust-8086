@@ -28,17 +28,21 @@ assert p, 0x0405
 add ax, 0x0001
 assert np, 0x0406
 ; Test AF
-mov ax, 0x0006
-add ax, 0x0001
-assert na, 0x0407
-add ax, 0x0007
-assert a, 0x0408
+mov bx, 0x0006
+add bx, 0x0001
+lahf
+test ah, 0x0010
+assert z, 0x0407
+add bx, 0x0007
+lahf
+test ah, 0x0010
+assert nz, 0x0408
 ; Test ZF
 mov ax, 0x0000
 add ax, 0x0000
 assert z, 0x0409
 add ax, 0x0001
-assert z, 0x040a
+assert nz, 0x040a
 ; Test SF
 mov ax, 3
 add ax, -4
@@ -46,7 +50,7 @@ assert s, 0x040b
 add ax, 6
 assert ns, 0x040c
 ; Test OF
-mov ax, 0x0fff
+mov ax, 0x7fff
 add ax, 0x0001
 assert o, 0x040d
 add ax, 0x0002
