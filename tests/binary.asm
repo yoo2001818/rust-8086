@@ -55,3 +55,67 @@ add ax, 0x0001
 assert o, 0x040d
 add ax, 0x0002
 assert no, 0x040e
+binary_test_2:
+; Test bytes
+mov al, 0x01
+add al, 0x01
+adc al, 0x01
+cmp al, 0x03
+assert e, 0x0410
+stc
+adc al, 0x01
+cmp al, 0x05
+assert e, 0x0411
+; Test CF true
+mov al, 0xf0
+add al, 0x10
+assert c, 0x0412
+; Test CF false
+mov al, 0x80
+add al, 0x10
+assert nc, 0x0413
+; Test PF
+mov al, 0x00
+add al, 0x11
+assert p, 0x0414
+add al, 0x01
+assert p, 0x0415
+add al, 0x01
+assert np, 0x0416
+; Test AF
+mov bl, 0x06
+add bl, 0x01
+lahf
+test ah, 0x10
+assert z, 0x0417
+add bl, 0x07
+lahf
+test ah, 0x10
+assert nz, 0x0418
+; Test ZF
+mov al, 0x00
+add al, 0x00
+assert z, 0x0419
+add al, 0x01
+assert nz, 0x041a
+; Test SF
+mov al, 3
+add al, -4
+assert s, 0x041b
+add al, 6
+assert ns, 0x041c
+; Test OF
+mov al, 0x7f
+add al, 0x01
+assert o, 0x041d
+add al, 0x02
+assert no, 0x041e
+binary_test_3:
+; Test b, f, r/m
+; Test w, f, r/m
+; Test b, t, r/m
+; Test w, t, r/m
+; Test b, ia
+; Test w, ia
+; Test b, r/m, imm
+; Test w, r/m, imm
