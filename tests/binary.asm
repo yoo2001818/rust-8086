@@ -111,11 +111,37 @@ assert o, 0x041d
 add al, 0x02
 assert no, 0x041e
 binary_test_3:
+mov al, 0x01
+mov byte [0x1000], 0x05
 ; Test b, f, r/m
-; Test w, f, r/m
+add byte [0x1000], al ; 6
 ; Test b, t, r/m
-; Test w, t, r/m
+add byte al, [0x1000] ; 7
 ; Test b, ia
-; Test w, ia
+add byte al, 0x01 ; 8
 ; Test b, r/m, imm
+add byte [0x1000], 0x01 ; 7
+cmp al, 0x08
+assert e, 0x0420
+cmp byte [0x1000], 0x07
+assert e, 0x0421
+mov ax, 0x01
+mov word [0x1000], 0x05
+; Test w, f, r/m
+add word [0x1000], ax ; 6
+; Test w, t, r/m
+add word ax, [0x1000] ; 7
+; Test w, ia
+add word ax, 0x01 ; 8
 ; Test w, r/m, imm
+add word [0x1000], 0x01 ; 7
+cmp ax, 0x08
+assert e, 0x0420
+cmp word [0x1000], 0x07
+assert e, 0x0421
+binary_test_4:
+; Subtract test
+mov ax, 0x0010
+sub ax, 0x0008
+cmp ax, 0x0008
+assert e, 0x0008
