@@ -144,4 +144,22 @@ binary_test_4:
 mov ax, 0x0010
 sub ax, 0x0008
 cmp ax, 0x0008
-assert e, 0x0008
+assert e, 0x0430
+; Test CF true
+mov ax, 0x0001
+sub ax, 0x0002
+assert c, 0x0431
+; Test CF false
+mov ax, 0x0010
+sub ax, 0x0008
+assert nc, 0x0432
+; Test PF
+mov ax, 0x000f
+sub ax, 0x0001 ; 0xe
+assert np, 0x0433
+sub ax, 0x0001 ; 0xd
+assert p, 0x0434
+; Test AF
+; Test ZF
+; Test SF
+; Test OF
