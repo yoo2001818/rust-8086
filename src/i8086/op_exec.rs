@@ -58,11 +58,10 @@ impl OperandOpValue for u8 {
     ))
   }
   fn sub(src: u8, dest: u8, carry: bool) -> (u8, Flags) {
-    let new_src =
-      ((src as i8).wrapping_add(if carry { 1 } else { 0 }))
-        .wrapping_neg() as u8;
+    let carry_src = (src as i8).wrapping_add(if carry { 1 } else { 0 });
+    let new_src = carry_src.wrapping_neg() as u8;
     let result = dest.wrapping_add(new_src);
-    let cf = !(result > new_src && result > dest);
+    let cf = (carry_src as u8) > dest;
     let af = (!(new_src ^ dest)) & (new_src ^ result) & 0x8 != 0;
     let of = (!(new_src ^ dest)) & (new_src ^ result) & 0x80 != 0;
     let (prev_clear, prev_set) = OperandOpValue::get_flags(result);
@@ -176,9 +175,10 @@ impl OperandOpValue for u16 {
     ))
   }
   fn sub(src: u16, dest: u16, carry: bool) -> (u16, Flags) {
-    let new_src = (-(src as i16) - (if carry { 1 } else { 0 })) as u16;
+    let carry_src = (src as i16).wrapping_add(if carry { 1 } else { 0 });
+    let new_src = carry_src.wrapping_neg() as u16;
     let result = dest.wrapping_add(new_src);
-    let cf = !(result > new_src && result > dest);
+    let cf = (carry_src as u16) > dest;
     let af = (!(new_src ^ dest)) & (new_src ^ result) & 0x8 != 0;
     let of = (!(new_src ^ dest)) & (new_src ^ result) & 0x8000 != 0;
     let (prev_clear, prev_set) = OperandOpValue::get_flags(result);
