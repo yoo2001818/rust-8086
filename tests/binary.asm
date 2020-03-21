@@ -153,13 +153,15 @@ assert c, 0x0431
 mov ax, 0x0010
 sub ax, 0x0008
 assert nc, 0x0432
-; Test PF
-mov ax, 0x000f
-sub ax, 0x0001 ; 0xe
-assert np, 0x0433
-sub ax, 0x0001 ; 0xd
-assert p, 0x0434
-; Test AF
-; Test ZF
 ; Test SF
+mov ax, 3
+sub ax, 4
+assert s, 0x0433
+sub ax, -6
+assert ns, 0x0434
 ; Test OF
+mov ax, 0x0000
+sub ax, 0x0001
+assert o, 0x0435
+sub ax, 0x0002
+assert no, 0x0436
