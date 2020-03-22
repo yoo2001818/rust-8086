@@ -165,3 +165,36 @@ sub ax, 0x0001
 assert o, 0x0435
 sub ax, 0x0002
 assert no, 0x0436
+; Subtract test
+mov al, 0x10
+sub al, 0x08
+cmp al, 0x08
+assert e, 0x0437
+; Test CF true
+mov al, 0x01
+sub al, 0x02
+assert c, 0x0438
+; Test CF false
+mov al, 0x10
+sub al, 0x08
+assert nc, 0x0439
+; Test SF
+mov al, 3
+sub al, 4
+assert s, 0x043a
+sub al, -6
+assert ns, 0x043b
+; Test OF
+mov al, 0x00
+sub al, 0x01
+assert o, 0x043c
+sub al, 0x02
+assert no, 0x043d
+binary_test_5:
+; Sbb
+; And
+; Cmp
+; Or
+; Test
+; Xchg
+; Xor
