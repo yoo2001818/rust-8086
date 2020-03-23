@@ -192,9 +192,62 @@ sub al, 0x02
 assert no, 0x043d
 binary_test_5:
 ; Sbb
+mov ax, 0x04
+stc
+sbb ax, 0x01
+sbb ax, 0x01
+cmp ax, 0x01
+assert e, 0x0440
+mov al, 0x04
+stc
+sbb al, 0x01
+sbb al, 0x01
+cmp al, 0x01
+assert e, 0x0441
 ; And
-; Cmp
+mov ax, 0xbaba
+and ax, 0xf010
+cmp ax, 0xb010
+assert e, 0x0442
+mov al, 0xba
+and al, 0xf2
+cmp al, 0xb2
+assert e, 0x0443
+; Cmp... is meaningless to test; we've already used it
 ; Or
+mov ax, 0x1100
+or ax, 0x0011
+cmp ax, 0x1111
+assert e, 0x0444
+mov al, 0x10
+or al, 0x01
+cmp al, 0x11
+assert e, 0x0445
 ; Test
+; Test should AND with src and store its flags, but discard actual result
+mov ax, 0x1000
+test ax, 0x0001
+assert z, 0x0446
+test ax, 0x1000
+assert nz, 0x0447
 ; Xchg
+mov ax, 0xbaba
+mov bx, 0xabab
+xchg ax, bx
+cmp ax, 0xabab
+assert e, 0x0448
+cmp bx, 0xbaba
+assert e, 0x0449
+mov word [0x1000], 0xf001
+xchg [0x1000], bx
+cmp bx, 0xf001
+assert e, 0x044a
 ; Xor
+mov ax, 0x0a0a
+xor ax, 0xf00f
+cmp ax, 0xfa05
+assert e, 0x044b
+mov al, 0x0a
+xor al, 0xaf
+cmp al, 0xa5
+assert e, 0x044c

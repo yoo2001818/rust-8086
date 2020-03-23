@@ -62,8 +62,10 @@ impl OperandOpValue for u8 {
     let new_src = carry_src.wrapping_neg() as u8;
     let result = dest.wrapping_add(new_src);
     let cf = (carry_src as u8) > dest;
-    let af = (!(new_src ^ dest)) & (new_src ^ result) & 0x8 != 0;
-    let of = (!(new_src ^ dest)) & (new_src ^ result) & 0x80 != 0;
+    let af = (!(carry_src as u8 ^ dest)) &
+      (carry_src as u8 ^ result) & 0x8 != 0;
+    let of = (!(carry_src as u8 ^ dest)) &
+      (carry_src as u8 ^ result) & 0x80 != 0;
     let (prev_clear, prev_set) = OperandOpValue::get_flags(result);
     (result, (
       prev_clear | CF | AF | OF,
