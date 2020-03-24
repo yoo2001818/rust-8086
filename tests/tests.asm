@@ -21,5 +21,6 @@ startdebug
 %include "push.asm"
 %include "flags.asm"
 %include "binary.asm"
+%include "call.asm"
 end:
 hlt
