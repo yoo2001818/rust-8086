@@ -286,6 +286,33 @@ impl OperandOpValue for u16 {
   }
 }
 
+fn push_val<T, R>(
+  cpu: &mut CPU,
+  src_val: T,
+) -> ()
+  where T: OperandValue<R> + OperandOpValue, R: RegisterType 
+{
+  // TODO Is this really good idea?
+  cpu.register.sp -= T::get_stack_size();
+  cpu.set_operand_with_seg::<T, R>(
+    &Operand::Direct(cpu.register.sp),
+    &Some(RegisterWordType::Ss),
+    src_val);
+}
+
+fn pop_val<T, R>(
+  cpu: &mut CPU,
+) -> T
+  where T: OperandValue<R> + OperandOpValue, R: RegisterType 
+{
+  // TODO Is this really good idea?
+  let result = cpu.get_operand_with_seg::<T, R>(
+    &Operand::Direct(cpu.register.sp),
+    &Some(RegisterWordType::Ss));
+  cpu.register.sp += T::get_stack_size();
+  return result;
+}
+
 fn exec_binary<T, R>(
   cpu: &mut CPU,
   op: &OpBinaryOp,
@@ -371,20 +398,11 @@ fn exec_unary<T, R>(
   let dest_val: T = cpu.get_operand(dest);
   match op {
     OpUnaryOp::Push => {
-      // TODO Is this really good idea?
-      cpu.register.sp -= T::get_stack_size();
-      cpu.set_operand_with_seg::<T, R>(
-        &Operand::Direct(cpu.register.sp),
-        &Some(RegisterWordType::Ss),
-        dest_val);
+      push_val(cpu, dest_val);
     },
     OpUnaryOp::Pop => {
-      // TODO Is this really good idea?
-      let result = cpu.get_operand_with_seg::<T, R>(
-        &Operand::Direct(cpu.register.sp),
-        &Some(RegisterWordType::Ss));
-      cpu.register.sp += T::get_stack_size();
-      cpu.set_operand(dest, result);
+      let new_val = pop_val::<T, R>(cpu);
+      cpu.set_operand(dest, new_val);
     },
     OpUnaryOp::Inc => {
       let (result, (flag_clear, flag_set)) =
@@ -524,18 +542,10 @@ fn exec_nullary(cpu: &mut CPU, op: &OpNullaryOp) -> () {
       cpu.blit_flags(0xff, flags as u16);
     },
     OpNullaryOp::Pushf => {
-      // TODO Is this really good idea?
-      cpu.register.sp -= 2;
-      cpu.set_operand_with_seg::<u16, RegisterWordType>(
-        &Operand::Direct(cpu.register.sp),
-        &Some(RegisterWordType::Ss),
-        cpu.get_flags());
+      push_val::<u16, RegisterWordType>(cpu, cpu.get_flags());
     },
     OpNullaryOp::Popf => {
-      let result = cpu.get_operand_with_seg::<u16, RegisterWordType>(
-        &Operand::Direct(cpu.register.sp),
-        &Some(RegisterWordType::Ss));
-      cpu.register.sp += 2;
+      let result = pop_val::<u16, RegisterWordType>(cpu);
       cpu.set_flags(result);
     },
     OpNullaryOp::Aaa => {},
@@ -715,7 +725,8 @@ impl CPU {
       Op::Scas(size) => {},
       Op::Lods(size) => {},
       Op::Stos(size) => {},
-      Op::Call(call_type) => {},
+      Op::Call(call_type) => {
+      },
       Op::Jmp(call_type) => {},
       Op::RetWithin => {},
       Op::RetWithinImm(value) => {},
