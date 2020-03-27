@@ -726,9 +726,28 @@ impl CPU {
       Op::Lods(size) => {},
       Op::Stos(size) => {},
       Op::Call(call_type) => {
+        match call_type {
+          OpCallType::WithinDirect(addr) => {
+            let ip = self.register.ip;
+            push_val(self, ip);
+            self.register.ip = *addr;
+          },
+          OpCallType::WithinIndirect(operand) => {
+
+          },
+          OpCallType::InterDirect(cs, ip) => {
+
+          },
+          OpCallType::InterIndirect(operand) => {
+
+          },
+        }
       },
       Op::Jmp(call_type) => {},
-      Op::RetWithin => {},
+      Op::RetWithin => {
+        let ip = pop_val(self);
+        self.register.ip = ip;
+      },
       Op::RetWithinImm(value) => {},
       Op::RetInter => {},
       Op::RetInterImm(value) => {},
