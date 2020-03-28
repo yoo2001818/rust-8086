@@ -2,6 +2,7 @@
 call_test_1:
 ; We should test call, ret, int
 mov ax, 0x1000
+hlt
 call call_test_1_func
 cmp ax, 0x1001
 assert e, 0x0500
