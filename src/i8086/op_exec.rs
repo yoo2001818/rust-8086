@@ -731,6 +731,7 @@ impl CPU {
             let ip = self.register.ip;
             push_val(self, ip);
             self.register.ip = *addr;
+            println!("JMP {:08X}", self.register.ip);
           },
           OpCallType::WithinIndirect(operand) => {
 

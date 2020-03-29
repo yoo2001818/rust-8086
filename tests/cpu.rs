@@ -2,6 +2,8 @@ extern crate rust_8086;
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::thread;
+use std::time;
 
 use rust_8086::i8086::cpu::CPU;
 use rust_8086::mem::linear::LinearMemory;
@@ -132,6 +134,7 @@ fn op_tests() {
     cpu.exec_op(&op);
     if *debugging.borrow() {
       println!("{:#?} {:#?}", &op, &cpu.register);
+      thread::sleep(time::Duration::from_millis(300));
     }
   }
   match *failed_data.borrow() {

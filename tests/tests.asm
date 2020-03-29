@@ -15,11 +15,12 @@ global _main
   %%success:
 %endmacro
 _main:
-%include "segment.asm"
-%include "mov.asm"
-%include "push.asm"
-%include "flags.asm"
-%include "binary.asm"
+org 0x100
+;%include "segment.asm"
+;%include "mov.asm"
+;%include "push.asm"
+;%include "flags.asm"
+;%include "binary.asm"
 startdebug
 %include "call.asm"
 end:
