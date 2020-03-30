@@ -730,13 +730,65 @@ impl CPU {
           OpCallType::WithinDirect(addr) => {
             let ip = self.register.ip;
             push_val(self, ip);
-            self.register.ip = *addr;
-            println!("JMP {:08X}", self.register.ip);
+            // relative offset
+            self.register.ip = ip + *addr;
+          },
+          OpCallType::WithinIndirect(operand) => {
+            let ip = self.register.ip;
+            push_val(self, ip);
+            // absolute offset
+            let value: u16 = self.get_operand(operand);
+            self.register.ip = value;
+          },
+          OpCallType::InterDirect(cs, ip) => {
+            let old_cs = self.register.cs;
+            push_val(self, old_cs);
+            let old_ip = self.register.ip;
+            push_val(self, old_ip);
+            self.register.cs = *cs;
+            self.register.ip = *ip;
+          },
+          OpCallType::InterIndirect(operand) => {
+            // Only memory reference is allowed
+            match operand {
+              Operand::Address(addr_type, offset) => {
+                let old_cs = self.register.cs;
+                push_val(self, old_cs);
+                let old_ip = self.register.ip;
+                push_val(self, old_ip);
+                // absolute offset
+                let ip: u16 = self.get_operand(operand);
+                self.register.ip = ip;
+                let cs: u16 = self.get_operand(
+                  &Operand::Address(*addr_type, offset.wrapping_add(2)));
+                self.register.cs = cs;
+              },
+              Operand::Direct(addr) => {
+                let old_cs = self.register.cs;
+                push_val(self, old_cs);
+                let old_ip = self.register.ip;
+                push_val(self, old_ip);
+                // absolute offset
+                let ip: u16 = self.get_operand(operand);
+                self.register.ip = ip;
+                let cs: u16 = self.get_operand(
+                  &Operand::Direct(addr.wrapping_add(2)));
+                self.register.cs = cs;
+              },
+              _ => {},
+            }
+          },
+        }
+      },
+      Op::Jmp(call_type) => {
+        match call_type {
+          OpCallType::WithinDirect(addr) => {
+
           },
           OpCallType::WithinIndirect(operand) => {
 
           },
-          OpCallType::InterDirect(cs, ip) => {
+          OpCallType::InterDirect(a, b) => {
 
           },
           OpCallType::InterIndirect(operand) => {
@@ -744,14 +796,28 @@ impl CPU {
           },
         }
       },
-      Op::Jmp(call_type) => {},
       Op::RetWithin => {
         let ip = pop_val(self);
         self.register.ip = ip;
       },
-      Op::RetWithinImm(value) => {},
-      Op::RetInter => {},
-      Op::RetInterImm(value) => {},
+      Op::RetWithinImm(value) => {
+        let ip = pop_val(self);
+        self.register.ip = ip;
+        self.register.sp += value;
+      },
+      Op::RetInter => {
+        let ip = pop_val(self);
+        self.register.ip = ip;
+        let cs = pop_val(self);
+        self.register.cs = cs;
+      },
+      Op::RetInterImm(value) => {
+        let ip = pop_val(self);
+        self.register.ip = ip;
+        let cs = pop_val(self);
+        self.register.cs = cs;
+        self.register.sp += value;
+      },
       Op::Int(value) => {},
       Op::Esc(code, operand) => {},
       Op::Segment(seg) => {

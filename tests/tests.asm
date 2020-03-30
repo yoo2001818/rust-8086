@@ -1,5 +1,6 @@
 CPU 8086
-section .data
+org 0x100
+section .text
 global _main 
 %macro startdebug 0
   mov ax, 0x0001
@@ -15,7 +16,6 @@ global _main
   %%success:
 %endmacro
 _main:
-org 0x100
 ;%include "segment.asm"
 ;%include "mov.asm"
 ;%include "push.asm"

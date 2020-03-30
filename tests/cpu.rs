@@ -134,7 +134,7 @@ fn op_tests() {
     cpu.exec_op(&op);
     if *debugging.borrow() {
       println!("{:#?} {:#?}", &op, &cpu.register);
-      thread::sleep(time::Duration::from_millis(300));
+      thread::sleep(time::Duration::from_millis(100));
     }
   }
   match *failed_data.borrow() {

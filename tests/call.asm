@@ -4,7 +4,6 @@ call_test_1:
 mov sp, 0xffff
 mov ax, 0x1000
 call call_test_1_func
-hlt
 cmp ax, 0x1001
 assert e, 0x0500
 mov cx, call_test_1_func
