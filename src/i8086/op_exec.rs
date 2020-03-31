@@ -731,7 +731,7 @@ impl CPU {
             let ip = self.register.ip;
             push_val(self, ip);
             // relative offset
-            self.register.ip = ip + *addr;
+            self.register.ip = (ip as i16).wrapping_add(*addr) as u16;
           },
           OpCallType::WithinIndirect(operand) => {
             let ip = self.register.ip;
@@ -783,16 +783,38 @@ impl CPU {
       Op::Jmp(call_type) => {
         match call_type {
           OpCallType::WithinDirect(addr) => {
-
+            let ip = self.register.ip;
+            self.register.ip = (ip as i16).wrapping_add(*addr) as u16;
           },
           OpCallType::WithinIndirect(operand) => {
-
+            let ip: u16 = self.get_operand(operand);
+            self.register.ip = ip;
           },
-          OpCallType::InterDirect(a, b) => {
-
+          OpCallType::InterDirect(cs, ip) => {
+            self.register.ip = *cs;
+            self.register.ip = *ip;
           },
           OpCallType::InterIndirect(operand) => {
-
+            // Only memory reference is allowed
+            match operand {
+              Operand::Address(addr_type, offset) => {
+                // absolute offset
+                let ip: u16 = self.get_operand(operand);
+                self.register.ip = ip;
+                let cs: u16 = self.get_operand(
+                  &Operand::Address(*addr_type, offset.wrapping_add(2)));
+                self.register.cs = cs;
+              },
+              Operand::Direct(addr) => {
+                // absolute offset
+                let ip: u16 = self.get_operand(operand);
+                self.register.ip = ip;
+                let cs: u16 = self.get_operand(
+                  &Operand::Direct(addr.wrapping_add(2)));
+                self.register.cs = cs;
+              },
+              _ => {},
+            }
           },
         }
       },

@@ -85,7 +85,7 @@ pub enum OpSize {
 #[derive(PartialEq)]
 #[derive(Debug)]
 pub enum OpCallType {
-  WithinDirect(u16),
+  WithinDirect(i16),
   WithinIndirect(OperandWord),
   InterDirect(u16, u16),
   InterIndirect(OperandWord),
@@ -934,11 +934,11 @@ pub fn parse_op(iter: &mut dyn Iterator<Item = u8>) -> Option<Op> {
       // EC..ED - IN
       // EE..EF - OUT
       match first_octet {
-        0 => Op::Call(OpCallType::WithinDirect(iter_next_u16(iter)?)),
-        1 => Op::Jmp(OpCallType::WithinDirect(iter_next_u16(iter)?)),
+        0 => Op::Call(OpCallType::WithinDirect(iter_next_u16(iter)? as i16)),
+        1 => Op::Jmp(OpCallType::WithinDirect(iter_next_u16(iter)? as i16)),
         2 => Op::Jmp(OpCallType::InterDirect(
           iter_next_u16(iter)?, iter_next_u16(iter)?)),
-        3 => Op::Jmp(OpCallType::WithinDirect(iter.next()? as u16)),
+        3 => Op::Jmp(OpCallType::WithinDirect(iter.next()? as i8 as i16)),
         4 => Op::InFixed(OpSize::Byte),
         5 => Op::InFixed(OpSize::Word),
         6 => Op::OutFixed(OpSize::Byte),
