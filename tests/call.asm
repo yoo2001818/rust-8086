@@ -27,3 +27,6 @@ jmp cx
 call_test_2_func:
 ret 4
 call_test_3:
+; Test interrupt; first create IVT
+mov ax, 0x0000
+mov es, ax
