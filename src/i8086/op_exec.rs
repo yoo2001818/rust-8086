@@ -631,6 +631,11 @@ fn exec_cond_jmp(cpu: &mut CPU, op: &OpCondJmpOp, offset: i8) -> () {
 }
 
 impl CPU {
+  pub fn interrupt(&mut self, value: u8) -> () {
+    // Push flags
+    // Clear IF, TF, AF
+    // Push cs, ip
+  }
   pub fn exec_op(&mut self, op: &Op) -> () {
     match op {
       Op::BinaryByte { op, src, dest } => {
@@ -840,7 +845,9 @@ impl CPU {
         self.register.cs = cs;
         self.register.sp += value;
       },
-      Op::Int(value) => {},
+      Op::Int(value) => {
+        self.interrupt(*value);
+      },
       Op::Esc(code, operand) => {},
       Op::Segment(seg) => {
         self.segment_selector = Some(*seg);
