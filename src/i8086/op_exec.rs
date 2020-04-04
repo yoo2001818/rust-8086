@@ -635,6 +635,16 @@ impl CPU {
     // Push flags
     // Clear IF, TF, AF
     // Push cs, ip
+    push_val::<u16, RegisterWordType>(self, self.get_flags());
+    self.blit_flags(IF | TF | AF, 0);
+    push_val(self, self.register.cs);
+    push_val(self, self.register.ip);
+    // Jump to IVT. IVT = ip 2 bytes, cs 2 bytes
+    let target_addr = (value as usize) * 4;
+    let new_ip = u16::read_mem(&*self.memory, target_addr);
+    let new_cs = u16::read_mem(&*self.memory, target_addr + 2);
+    self.register.ip = new_ip;
+    self.register.cs = new_cs;
   }
   pub fn exec_op(&mut self, op: &Op) -> () {
     match op {
