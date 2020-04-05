@@ -558,8 +558,20 @@ fn exec_nullary(cpu: &mut CPU, op: &OpNullaryOp) -> () {
     OpNullaryOp::Cwd => {},
     OpNullaryOp::Rep => {},
     OpNullaryOp::Repz => {},
-    OpNullaryOp::Into => {},
-    OpNullaryOp::Iret => {},
+    OpNullaryOp::Into => {
+      cpu.interrupt(4);
+    },
+    OpNullaryOp::Iret => {
+      // Pop IP
+      // Pop CS
+      // Pop Flags
+      let ip = pop_val::<u16, RegisterWordType>(cpu);
+      let cs = pop_val::<u16, RegisterWordType>(cpu);
+      let flags = pop_val::<u16, RegisterWordType>(cpu);
+      cpu.register.ip = ip;
+      cpu.register.cs = cs;
+      cpu.set_flags(flags);
+    },
     OpNullaryOp::Clc => {
       cpu.blit_flags(CF, 0);
     },

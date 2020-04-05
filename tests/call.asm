@@ -20,7 +20,7 @@ mov sp, 0xffff
 sub sp, 4
 call call_test_2_func
 cmp sp, 0xffff
-assert e, 0x0502
+assert e, 0x0510
 ; Test jmp far
 mov cx, call_test_3
 jmp cx
@@ -30,3 +30,18 @@ call_test_3:
 ; Test interrupt; first create IVT
 mov ax, 0x0000
 mov es, ax
+startdebug
+mov ax, cs
+; interrupt 0x18
+mov word [es:0x60], call_test_3_int
+mov word [es:0x62], ax
+; Call interrupt
+mov ax, 0x1234
+int 0x18
+cmp ax, 0x1230
+assert e, 0x0520
+jmp call_test_4
+call_test_3_int:
+sub ax, 0x0004
+iret
+call_test_4:
