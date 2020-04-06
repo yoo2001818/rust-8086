@@ -744,9 +744,47 @@ impl CPU {
           },
         }
       },
-      Op::Lea(reg, operand) => {},
-      Op::Lds(reg, operand) => {},
-      Op::Les(reg, operand) => {},
+      Op::Lea(reg, operand) => {
+        // Only memory reference is allowed
+        match operand {
+          Operand::Address(addr_type, offset) => {
+            let num_offset = self.get_offset(addr_type, *offset);
+            u16::write_reg(&mut self.register, reg, num_offset);
+          },
+          Operand::Direct(addr) => {
+            u16::write_reg(&mut self.register, reg, *addr);
+          },
+          _ => {
+            // Raise UD exception
+          },
+        }
+      },
+      Op::Lds(reg, operand) => {
+        // Only memory reference is allowed
+        match operand {
+          Operand::Address(_, _) | Operand::Direct(_) => {
+            let value: u16 =
+              self.get_operand_with_seg(operand, &Some(RegisterWordType::Ds));
+            u16::write_reg(&mut self.register, reg, value);
+          },
+          _ => {
+            // Raise UD exception
+          },
+        }
+      },
+      Op::Les(reg, operand) => {
+        // Only memory reference is allowed
+        match operand {
+          Operand::Address(_, _) | Operand::Direct(_) => {
+            let value: u16 =
+              self.get_operand_with_seg(operand, &Some(RegisterWordType::Es));
+            u16::write_reg(&mut self.register, reg, value);
+          },
+          _ => {
+            // Raise UD exception
+          },
+        }
+      },
       Op::Movs(size) => {},
       Op::Cmps(size) => {},
       Op::Scas(size) => {},
