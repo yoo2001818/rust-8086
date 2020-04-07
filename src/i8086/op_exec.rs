@@ -548,7 +548,20 @@ fn exec_nullary(cpu: &mut CPU, op: &OpNullaryOp) -> () {
       let result = pop_val::<u16, RegisterWordType>(cpu);
       cpu.set_flags(result);
     },
-    OpNullaryOp::Aaa => {},
+    OpNullaryOp::Aaa => {
+      // ASCII adjust after addition
+      let flags = cpu.get_flags();
+      let mut al = cpu.register.ax & 0xff;
+      let mut ah = (cpu.register.ax & 0xff00) >> 8;
+      if (al & 0xf) > 9 || (flags & AF) != 0 {
+        al = al + 6;
+        ah = ah + 1;
+        cpu.blit_flags(AF | CF, AF | CF);
+      } else {
+        cpu.blit_flags(AF | CF, 0);
+      }
+      al = al & 0xf;
+    },
     OpNullaryOp::Daa => {},
     OpNullaryOp::Aas => {},
     OpNullaryOp::Das => {},
