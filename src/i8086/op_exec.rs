@@ -549,10 +549,10 @@ fn exec_nullary(cpu: &mut CPU, op: &OpNullaryOp) -> () {
       cpu.set_flags(result);
     },
     OpNullaryOp::Aaa => {
-      // ASCII adjust after addition
+      // ASCII adjust AL after addition
       let flags = cpu.get_flags();
       let mut al = cpu.register.ax & 0xff;
-      let mut ah = (cpu.register.ax & 0xff00) >> 8;
+      let mut ah = (cpu.register.ax >> 8) & 0xff;
       if (al & 0xf) > 9 || (flags & AF) != 0 {
         al = al + 6;
         ah = ah + 1;
@@ -561,10 +561,65 @@ fn exec_nullary(cpu: &mut CPU, op: &OpNullaryOp) -> () {
         cpu.blit_flags(AF | CF, 0);
       }
       al = al & 0xf;
+      cpu.register.ax = al | (ah << 8);
     },
-    OpNullaryOp::Daa => {},
-    OpNullaryOp::Aas => {},
-    OpNullaryOp::Das => {},
+    OpNullaryOp::Daa => {
+      // Decimal adjust AL after addition
+      let flags = cpu.get_flags();
+      let old_cf = flags & CF != 0;
+      let mut al = cpu.register.ax & 0xff;
+      if (al & 0xf) > 9 || (flags & AF) != 0 {
+        let old_al = al;
+        al = al.wrapping_add(6) & 0xff;
+        let cf = !(al > old_al && al > 6);
+        cpu.blit_flags(AF | CF, AF | (if old_cf || cf { CF } else { 0 }));
+      } else {
+        cpu.blit_flags(AF, 0);
+      }
+      if al > 0x99 || old_cf {
+        al = (al + 0x60) & 0xff;
+        cpu.blit_flags(CF, CF);
+      } else {
+        cpu.blit_flags(CF, 0);
+      }
+      cpu.register.ax = al & (cpu.register.ax & 0xff00);
+    },
+    OpNullaryOp::Aas => {
+      // ASCII adjust AL after subtraction
+      let flags = cpu.get_flags();
+      let mut al = cpu.register.ax & 0xff;
+      let mut ah = (cpu.register.ax >> 8) & 0xff;
+      if (al & 0xf) > 9 || (flags & AF) != 0 {
+        al = al - 6;
+        ah = ah - 1;
+        cpu.blit_flags(AF | CF, AF | CF);
+      } else {
+        cpu.blit_flags(AF | CF, 0);
+      }
+      al = al & 0xf;
+      cpu.register.ax = al | (ah << 8);
+    },
+    OpNullaryOp::Das => {
+      // Decimal adjust AL after subtraction
+      let flags = cpu.get_flags();
+      let old_cf = flags & CF != 0;
+      let mut al = cpu.register.ax & 0xff;
+      if (al & 0xf) > 9 || (flags & AF) != 0 {
+        let old_al = al;
+        al = al.wrapping_sub(6) & 0xff;
+        let cf = !(al <= old_al);
+        cpu.blit_flags(AF | CF, AF | (if old_cf || cf { CF } else { 0 }));
+      } else {
+        cpu.blit_flags(AF, 0);
+      }
+      if al > 0x99 || old_cf {
+        al = (al - 0x60) & 0xff;
+        cpu.blit_flags(CF, CF);
+      } else {
+        cpu.blit_flags(CF, 0);
+      }
+      cpu.register.ax = al & (cpu.register.ax & 0xff00);
+    },
     OpNullaryOp::Aam => {},
     OpNullaryOp::Aad => {},
     OpNullaryOp::Cbw => {},
