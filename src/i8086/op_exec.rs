@@ -620,10 +620,33 @@ fn exec_nullary(cpu: &mut CPU, op: &OpNullaryOp) -> () {
       }
       cpu.register.ax = al & (cpu.register.ax & 0xff00);
     },
-    OpNullaryOp::Aam => {},
-    OpNullaryOp::Aad => {},
-    OpNullaryOp::Cbw => {},
-    OpNullaryOp::Cwd => {},
+    OpNullaryOp::Aam => {
+      // ASCII adjust AL after multiply 
+      let mut al = cpu.register.ax & 0xff;
+      let mut ah = (cpu.register.ax >> 8) & 0xff;
+      ah = al / 0x0a;
+      al = al % 0x0a;
+      let (flags_clear, flags_set) = u16::get_flags(al);
+      cpu.register.ax = al | (ah << 8);
+      cpu.blit_flags(flags_clear, flags_set);
+    },
+    OpNullaryOp::Aad => {
+      // ASCII adjust AL after divide
+      let mut al = cpu.register.ax & 0xff;
+      let mut ah = (cpu.register.ax >> 8) & 0xff;
+      al = (al + (ah * 0x0a)) & 0xff;
+      ah = 0;
+      let (flags_clear, flags_set) = u16::get_flags(al);
+      cpu.register.ax = al | (ah << 8);
+      cpu.blit_flags(flags_clear, flags_set);
+    },
+    OpNullaryOp::Cbw => {
+      cpu.register.ax = (cpu.register.ax & 0xff) as u8 as i8 as i16 as u16;
+    },
+    OpNullaryOp::Cwd => {
+      cpu.register.dx = 
+        if (cpu.register.ax & 0xf000) != 0 { 0xffff } else { 0 };
+    },
     OpNullaryOp::Rep => {},
     OpNullaryOp::Repz => {},
     OpNullaryOp::Into => {
