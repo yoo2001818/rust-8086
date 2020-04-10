@@ -6,6 +6,13 @@ use super::flags::*;
 use crate::mem::*;
 
 type Flags = (u16, u16);
+const INT_DE: u8 = 0x0;
+const INT_OF: u8 = 0x4;
+const INT_BR: u8 = 0x5;
+const INT_UD: u8 = 0x6;
+const INT_DF: u8 = 0x8;
+const INT_GP: u8 = 0xd;
+const INT_MF: u8 = 0x10;
 
 trait OperandOpValue: Sized + Copy {
   fn zero() -> Self;
@@ -101,6 +108,7 @@ impl OperandOpValue for u8 {
   }
   fn div(cpu: &mut CPU, value: u8) -> Option<()> {
     if value == 0 {
+      cpu.interrupt(INT_DE);
       return None;
     }
     let dividend = u16::read_reg(&cpu.register, &RegisterWordType::Ax);
@@ -115,6 +123,7 @@ impl OperandOpValue for u8 {
   }
   fn idiv(cpu: &mut CPU, value: u8) -> Option<()> {
     if value == 0 {
+      cpu.interrupt(INT_DE);
       return None;
     }
     let dividend = u16::read_reg(&cpu.register, &RegisterWordType::Ax);
@@ -226,6 +235,7 @@ impl OperandOpValue for u16 {
   }
   fn div(cpu: &mut CPU, value: u16) -> Option<()> {
     if value == 0 {
+      cpu.interrupt(INT_DE);
       return None;
     }
     let dividend =
@@ -242,6 +252,7 @@ impl OperandOpValue for u16 {
   }
   fn idiv(cpu: &mut CPU, value: u16) -> Option<()> {
     if value == 0 {
+      cpu.interrupt(INT_DE);
       return None;
     }
     let dividend =
@@ -688,8 +699,12 @@ fn exec_nullary(cpu: &mut CPU, op: &OpNullaryOp) -> () {
     OpNullaryOp::Hlt => {
       cpu.running = false;
     },
-    OpNullaryOp::Wait => {},
-    OpNullaryOp::Lock => {},
+    OpNullaryOp::Wait => {
+      // This is noop for now
+    },
+    OpNullaryOp::Lock => {
+      // This is noop
+    },
   }
 }
 
